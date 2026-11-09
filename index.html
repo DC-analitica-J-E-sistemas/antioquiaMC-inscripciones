@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inscripción — Antioquia Metropolitan Cup</title>
+<style>
+  :root {
+    --acento: #12b04a; --texto: #111; --gris: #5b6470; --linea: #dfe3e8;
+    --fondo: #f5f7f6; --card: #fff; --rojo: #c0392b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --texto: #f2f4f3; --gris: #9aa5b1; --linea: #2c3338; --fondo: #0f1311; --card: #181d1a; --acento: #2fd16a; --rojo: #ff7b6b; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--fondo); color: var(--texto); line-height: 1.45; }
+  header { background: #0b0b0b; padding: 14px 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  header img { height: 90px; width: auto; }
+  header h1 { color: #fff; font-size: 1.1rem; margin: 0; font-weight: 650; }
+  header p { color: #b8c2bc; margin: 2px 0 0; font-size: .85rem; }
+  header .logos { margin-left: auto; display: flex; gap: 12px; align-items: center; }
+  main { max-width: 900px; margin: 0 auto; padding: 18px 16px 60px; }
+  fieldset { border: 1px solid var(--linea); background: var(--card); border-radius: 12px; padding: 16px; margin: 0 0 16px; min-width: 0; }
+  legend { font-weight: 650; padding: 0 8px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  label { display: block; font-size: .82rem; color: var(--gris); margin-bottom: 4px; }
+  input, select { width: 100%; padding: 10px; border: 1px solid var(--linea); border-radius: 8px; font: inherit; background: var(--card); color: var(--texto); }
+  input:focus, select:focus { outline: 2px solid var(--acento); outline-offset: 1px; }
+  .jugador { border: 1px solid var(--linea); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+  .jugador-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-weight: 600; }
+  .edad, .archivo-info { font-size: .8rem; color: var(--gris); margin-top: 4px; }
+  button { font: inherit; cursor: pointer; border-radius: 8px; padding: 11px 16px; border: 1px solid var(--linea); background: var(--card); color: var(--texto); }
+  button.primario { background: var(--acento); color: #06210f; border-color: var(--acento); font-weight: 650; width: 100%; font-size: 1.05rem; }
+  button:disabled { opacity: .6; cursor: not-allowed; }
+  button.quitar { padding: 4px 10px; font-size: .8rem; color: var(--rojo); }
+  .contador { font-weight: 650; } .contador.lleno { color: var(--rojo); }
+  .msg { padding: 12px 14px; border-radius: 10px; margin: 12px 0; }
+  .msg.error { border: 1px solid var(--rojo); color: var(--rojo); }
+  .msg.info { border: 1px solid var(--linea); color: var(--gris); }
+  .check { display: flex; gap: 10px; align-items: flex-start; font-size: .9rem; margin-bottom: 12px; }
+  .check input { width: auto; margin-top: 4px; }
+  .oculto { position: absolute; left: -9999px; }
+  .nota { font-size: .8rem; color: var(--gris); }
+  .exito { text-align: center; padding: 24px 16px; border: 2px solid var(--acento); border-radius: 14px; background: var(--card); }
+  .codigo { font-size: 2rem; font-weight: 800; letter-spacing: .08em; margin: 10px 0; }
+  .modos { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .modos button { flex: 1; min-width: 220px; }
+  .modos button.activo { background: var(--acento); color: #06210f; border-color: var(--acento); font-weight: 650; }
+  [hidden] { display: none !important; }
+  .info-insc { margin-top: 12px; padding: 10px 12px; border: 1px solid var(--acento); border-radius: 8px; }
+  footer { text-align: center; padding: 20px 16px 36px; color: var(--gris); font-size: .85rem; border-top: 1px solid var(--linea); max-width: 900px; margin: 0 auto; }
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Inscripción de equipos</h1><p>Completa los datos de tu equipo</p></div>
+  <div class="logos">
+    <img src="img/torneo.png" alt="Antioquia Metropolitan Cup" onerror="this.style.display='none'">
+    <img src="img/dc-analitica.png" alt="DC analítica J&E sistemas" onerror="this.style.display='none'">
+  </div>
+</header>
+
+<main>
+  <div id="mensaje"></div>
+
+  <div class="modos">
+    <button type="button" id="modoNueva" class="activo">Nueva inscripción</button>
+    <button type="button" id="modoAgregar">Ya inscribí mi equipo: agregar jugadores</button>
+  </div>
+
+  <form id="formulario" novalidate>
+    <fieldset id="fsCodigo" hidden>
+      <legend>Tu inscripción</legend>
+      <div class="grid">
+        <div><label for="codigo">Código de inscripción</label><input id="codigo" maxlength="20" placeholder="AMC-XXXXXXXX" autocomplete="off"></div>
+        <div style="align-self:end"><button type="button" id="btnBuscar">Buscar mi inscripción</button></div>
+      </div>
+      <div id="infoInsc" class="info-insc" hidden></div>
+    </fieldset>
+
+    <fieldset id="fsEquipo">
+      <legend>1. Equipo y responsable</legend>
+      <div class="grid">
+        <div><label for="categoria">Categoría</label><select id="categoria"><option value="">Cargando…</option></select></div>
+        <div><label for="equipo">Equipo</label><select id="equipo" disabled><option value="">Primero elige la categoría</option></select></div>
+        <div><label for="delNombre">Nombre del delegado o DT</label><input id="delNombre" maxlength="80" autocomplete="name"></div>
+        <div><label for="delCelular">Celular del delegado o DT</label><input id="delCelular" inputmode="numeric" maxlength="15" autocomplete="tel"></div>
+      </div>
+    </fieldset>
+
+    <fieldset id="fsJugadores">
+      <legend>2. Jugadores <span id="contador" class="contador"></span></legend>
+      <p class="nota" id="notaLimites"></p>
+      <div id="listaJugadores"></div>
+      <button type="button" id="btnAgregar">+ Agregar jugador</button>
+    </fieldset>
+
+    <fieldset id="fsAut">
+      <legend>3. Autorizaciones</legend>
+      <label class="check"><input type="checkbox" id="decl">
+        <span>Declaro que cuento con la autorización firmada de los acudientes de cada jugador menor de edad inscrito, y que la entregaré a la organización cuando la solicite.</span></label>
+      <label class="check"><input type="checkbox" id="datos">
+        <span>Autorizo el tratamiento de los datos personales de los jugadores inscritos para la gestión del torneo, conforme a la Ley 1581 de 2012. <i>[Texto definitivo y política de tratamiento: los entrega el organizador.]</i></span></label>
+    </fieldset>
+
+    <input class="oculto" type="text" id="web" tabindex="-1" autocomplete="off" aria-hidden="true">
+    <button type="submit" id="btnEnviar" class="primario">Enviar inscripción</button>
+    <p class="nota">Puedes enviar tus jugadores en varios envíos hasta completar tu plantilla: guarda tu código de inscripción. Las correcciones las realiza la organización.</p>
+  </form>
+</main>
+<footer>DC analítica J&amp;E sistemas</footer>
+
+<script>
+// =====================================================================
+// CONFIGURACIÓN — lo único que se cambia.
+// =====================================================================
+const SUPABASE_URL = "https://bromcqhjewakfqokeytb.supabase.co";
+const SUPABASE_KEY = "sb_publishable_4JPe8F2TewAOi4OlNsu1kQ_nEpz9rCy";     // clave pública (sb_publishable_...)
+const VERSION_TEXTO = "v1";                               // versión del texto de autorización
+const MAX_MB = 10;                                        // debe coincidir con el bucket
+const TIPOS_DOC = [['RC', 'Registro civil'], ['TI', 'Tarjeta de identidad'], ['CC', 'Cédula de ciudadanía'], ['CE', 'Cédula de extranjería'], ['PA', 'Pasaporte']];
+
+// =====================================================================
+const $ = (id) => document.getElementById(id);
+const H = { 'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY };
+let categorias = [], limites = { min: 1, max: 25 };
+let modo = 'nueva';          // 'nueva' o 'agregar'
+let insc = null;             // inscripción encontrada con el código (modo agregar)
+
+function escapar(t) { return String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function mostrar(tipo, html) { $('mensaje').innerHTML = `<div class="msg ${tipo}">${html}</div>`; $('mensaje').scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+function calcularEdad(f) {
+  if (!f) return ''; const h = new Date(), n = new Date(f + 'T00:00:00'); if (isNaN(n)) return '';
+  let e = h.getFullYear() - n.getFullYear(); const m = h.getMonth() - n.getMonth();
+  if (m < 0 || (m === 0 && h.getDate() < n.getDate())) e--; return e;
+}
+async function rpc(nombre, cuerpo) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${nombre}`, { method: 'POST', headers: H, body: JSON.stringify(cuerpo || {}) });
+  const datos = await r.json().catch(() => null);
+  if (!r.ok) throw new Error((datos && datos.message) || 'Error de conexión');
+  return datos;
+}
+
+// ---------- Listas: categorías y equipos ----------
+async function cargarCategorias() {
+  try {
+    categorias = await rpc('categorias_abiertas');
+    if (!categorias.length) { $('categoria').innerHTML = '<option value="">Inscripciones cerradas</option>'; return; }
+    $('categoria').innerHTML = '<option value="">— Selecciona la categoría —</option>' +
+      categorias.map((c) => `<option value="${c.id}">${escapar(c.nombre)}</option>`).join('');
+  } catch (e) {
+    $('categoria').innerHTML = '<option value="">No se pudo cargar</option>';
+    mostrar('error', 'No se pudo cargar la información. Recarga la página; si sigue fallando, avisa a la organización.');
+  }
+}
+$('categoria').addEventListener('change', async (e) => {
+  const sel = $('equipo'); const cat = categorias.find((c) => String(c.id) === e.target.value);
+  if (!cat) { sel.disabled = true; sel.innerHTML = '<option value="">Primero elige la categoría</option>'; return; }
+  limites = { min: 1, max: cat.max_jugadores };
+  $('notaLimites').textContent = `Puedes enviar hasta ${cat.max_jugadores} jugadores` +
+    (cat.min_jugadores > 1 ? ` (para competir se exigen al menos ${cat.min_jugadores}; puedes completarlos después)` : '') +
+    `. Cada uno con la foto o PDF de su documento (JPG, PNG o PDF, máximo ${MAX_MB} MB).`;
+  renumerar();
+  sel.disabled = true; sel.innerHTML = '<option value="">Cargando equipos…</option>';
+  try {
+    const equipos = await rpc('equipos_disponibles', { p_categoria_id: cat.id });
+    sel.innerHTML = equipos.length
+      ? '<option value="">— Selecciona tu equipo —</option>' + equipos.map((q) => `<option value="${q.id}">${escapar(q.nombre)}</option>`).join('')
+      : '<option value="">No hay equipos disponibles en esta categoría</option>';
+    sel.disabled = !equipos.length;
+  } catch (err) { sel.innerHTML = '<option value="">No se pudo cargar</option>'; }
+});
+
+// ---------- Modos: nueva inscripción / agregar jugadores ----------
+function reiniciarJugadores() {
+  $('listaJugadores').innerHTML = ''; agregarJugador();
+}
+function setModo(m) {
+  modo = m; insc = null;
+  $('modoNueva').classList.toggle('activo', m === 'nueva');
+  $('modoAgregar').classList.toggle('activo', m === 'agregar');
+  $('fsEquipo').hidden = m !== 'nueva';
+  $('fsAut').hidden = m !== 'nueva';
+  $('fsCodigo').hidden = m !== 'agregar';
+  $('infoInsc').hidden = true;
+  $('fsJugadores').hidden = m === 'agregar';           // en este modo aparece al encontrar la inscripción
+  $('btnEnviar').hidden = m === 'agregar';
+  $('btnEnviar').textContent = m === 'nueva' ? 'Enviar inscripción' : 'Agregar jugadores';
+  $('btnEnviar').disabled = false;
+  $('mensaje').innerHTML = ''; $('formulario').style.display = '';
+  limites = { min: 1, max: m === 'nueva' && $('categoria').value ? limites.max : 25 };
+  $('notaLimites').textContent = m === 'nueva' ? '' : 'Estos jugadores se sumarán a tu inscripción.';
+  reiniciarJugadores();
+}
+async function buscarInscripcion() {
+  const cod = $('codigo').value.trim().toUpperCase();
+  if (!cod) { mostrar('error', 'Escribe tu código de inscripción.'); return; }
+  try {
+    const filas = await rpc('consultar_inscripcion', { p_codigo: cod });
+    if (!filas.length) { insc = null; $('infoInsc').hidden = true; $('fsJugadores').hidden = true; $('btnEnviar').hidden = true;
+      mostrar('error', 'Código no válido, o las inscripciones están cerradas.'); return; }
+    insc = filas[0]; insc.codigo = cod;
+    const restantes = insc.max_jugadores - insc.jugadores;
+    $('infoInsc').hidden = false;
+    $('infoInsc').innerHTML = `<b>${escapar(insc.equipo)}</b> — categoría ${escapar(insc.categoria)}<br>` +
+      `Jugadores inscritos: <b>${insc.jugadores}/${insc.max_jugadores}</b>` +
+      (insc.jugadores < insc.min_jugadores ? ` · faltan ${insc.min_jugadores - insc.jugadores} para el mínimo (${insc.min_jugadores})` : '');
+    if (restantes <= 0) { $('fsJugadores').hidden = true; $('btnEnviar').hidden = true; mostrar('info', 'Tu plantilla ya está completa.'); return; }
+    limites = { min: 1, max: restantes };
+    $('notaLimites').textContent = `Puedes agregar hasta ${restantes} jugador(es) más. Cada uno con la foto o PDF de su documento.`;
+    $('fsJugadores').hidden = false; $('btnEnviar').hidden = false; $('mensaje').innerHTML = '';
+    reiniciarJugadores();
+  } catch (e) { mostrar('error', escapar(e.message)); }
+}
+$('modoNueva').addEventListener('click', () => setModo('nueva'));
+$('modoAgregar').addEventListener('click', () => setModo('agregar'));
+$('btnBuscar').addEventListener('click', buscarInscripcion);
+
+// ---------- Jugadores ----------
+function agregarJugador() {
+  if (document.querySelectorAll('.jugador').length >= limites.max) return;
+  const div = document.createElement('div'); div.className = 'jugador';
+  div.innerHTML = `
+    <div class="jugador-head"><span class="titulo-jugador"></span><button type="button" class="quitar">Quitar</button></div>
+    <div class="grid">
+      <div><label>Tipo de documento</label><select class="tipo">${TIPOS_DOC.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select></div>
+      <div><label>Número de documento</label><input class="numero" maxlength="20" inputmode="numeric"></div>
+      <div><label>Nombres</label><input class="nombre" maxlength="60"></div>
+      <div><label>Apellidos</label><input class="apellido" maxlength="60"></div>
+      <div><label>Fecha de nacimiento</label><input type="date" class="fecha" min="1950-01-01" max="${new Date().toISOString().slice(0, 10)}"><div class="edad"></div></div>
+      <div><label>N.º de camiseta</label><input type="number" class="camiseta" min="0" max="999"></div>
+      <div><label>Foto o PDF del documento</label><input type="file" class="archivo" accept="image/jpeg,image/png,application/pdf"><div class="archivo-info"></div></div>
+    </div>`;
+  div.querySelector('.fecha').addEventListener('input', (e) => {
+    const ed = calcularEdad(e.target.value); div.querySelector('.edad').textContent = ed === '' ? '' : `Edad: ${ed} años`;
+  });
+  div.querySelector('.archivo').addEventListener('change', (e) => {
+    const f = e.target.files[0], info = div.querySelector('.archivo-info'); div._ruta = null;
+    if (!f) { info.textContent = ''; return; }
+    if (!['image/jpeg', 'image/png', 'application/pdf'].includes(f.type)) { info.textContent = '✘ Tipo no permitido. Usa JPG, PNG o PDF.'; e.target.value = ''; return; }
+    if (f.size > MAX_MB * 1048576) { info.textContent = `✘ El archivo pesa más de ${MAX_MB} MB.`; e.target.value = ''; return; }
+    info.textContent = `✔ ${f.name} (${(f.size / 1048576).toFixed(2)} MB)`;
+  });
+  div.querySelector('.quitar').addEventListener('click', () => { div.remove(); renumerar(); });
+  $('listaJugadores').appendChild(div); renumerar();
+}
+function renumerar() {
+  const filas = document.querySelectorAll('.jugador');
+  filas.forEach((f, i) => { f.querySelector('.titulo-jugador').textContent = 'Jugador ' + (i + 1); });
+  $('contador').textContent = `(${filas.length}/${limites.max})`;
+  $('contador').classList.toggle('lleno', filas.length >= limites.max);
+  $('btnAgregar').disabled = filas.length >= limites.max;
+}
+
+// ---------- Validación (la base de datos vuelve a validar todo) ----------
+function leerJugadores() {
+  return [...document.querySelectorAll('.jugador')].map((f) => ({
+    el: f,
+    tipo_documento: f.querySelector('.tipo').value,
+    numero_documento: f.querySelector('.numero').value.trim(),
+    nombre: f.querySelector('.nombre').value.trim(),
+    apellido: f.querySelector('.apellido').value.trim(),
+    fecha_nacimiento: f.querySelector('.fecha').value,
+    numero_camiseta: f.querySelector('.camiseta').value === '' ? null : Number(f.querySelector('.camiseta').value),
+    archivo: f.querySelector('.archivo').files[0] || null
+  }));
+}
+function validar(js) {
+  if (modo === 'nueva') {
+    if (!$('categoria').value) return 'Selecciona la categoría.';
+    if (!$('equipo').value) return 'Selecciona tu equipo de la lista.';
+    if (!$('delNombre').value.trim()) return 'Escribe el nombre del delegado o DT.';
+    if (!/^\d{7,15}$/.test($('delCelular').value.trim())) return 'El celular debe tener solo números (7 a 15 dígitos).';
+  } else if (!insc) return 'Primero busca tu inscripción con el código.';
+  if (js.length < 1 || js.length > limites.max) return `Puedes enviar entre 1 y ${limites.max} jugadores en este envío.`;
+  const docs = new Set(), cams = new Set();
+  for (let i = 0; i < js.length; i++) {
+    const d = js[i], n = i + 1;
+    if (!d.numero_documento || !d.nombre || !d.apellido || !d.fecha_nacimiento) return `Jugador ${n}: faltan datos obligatorios.`;
+    if (d.tipo_documento !== 'PA' && !/^\d{5,12}$/.test(d.numero_documento)) return `Jugador ${n}: el número de documento debe tener solo números.`;
+    const k = d.tipo_documento + '-' + d.numero_documento;
+    if (docs.has(k)) return `Jugador ${n}: el documento está repetido en este formulario.`; docs.add(k);
+    if (d.numero_camiseta !== null) { if (cams.has(d.numero_camiseta)) return `Jugador ${n}: la camiseta ${d.numero_camiseta} está repetida.`; cams.add(d.numero_camiseta); }
+    const ed = calcularEdad(d.fecha_nacimiento); if (ed === '' || ed < 4 || ed > 90) return `Jugador ${n}: revisa la fecha de nacimiento.`;
+    if (!d.archivo && !d.el._ruta) return `Jugador ${n}: adjunta la foto o PDF del documento.`;
+  }
+  if (modo === 'nueva' && (!$('decl').checked || !$('datos').checked)) return 'Debes aceptar las dos autorizaciones.';
+  return null;
+}
+
+// ---------- Subida de archivos (reduce fotos pesadas para ahorrar espacio) ----------
+async function reducirImagen(file) {
+  if (!file.type.startsWith('image/') || file.size < 1.5 * 1048576) return file;
+  try {
+    const bmp = await createImageBitmap(file); const esc = Math.min(1, 1800 / Math.max(bmp.width, bmp.height));
+    const c = document.createElement('canvas'); c.width = Math.round(bmp.width * esc); c.height = Math.round(bmp.height * esc);
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    const blob = await new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.85));
+    return blob && blob.size < file.size ? new File([blob], 'doc.jpg', { type: 'image/jpeg' }) : file;
+  } catch (e) { return file; }
+}
+async function subir(file, ruta) {
+  const r = await fetch(`${SUPABASE_URL}/storage/v1/object/documentos/${ruta}`, {
+    method: 'POST', headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY, 'Content-Type': file.type }, body: file });
+  if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.message || 'No se pudo subir un archivo'); }
+}
+
+// ---------- Envío ----------
+$('formulario').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if ($('web').value) return;                        // campo trampa contra bots
+  const js = leerJugadores(), error = validar(js);
+  if (error) { mostrar('error', escapar(error)); return; }
+  const btn = $('btnEnviar'); btn.disabled = true;
+  try {
+    const carpeta = crypto.randomUUID();
+    for (let i = 0; i < js.length; i++) {
+      const d = js[i];
+      if (!d.el._ruta) {                              // si ya se subió en un intento anterior, no se repite
+        btn.textContent = `Subiendo documentos… ${i + 1}/${js.length}`;
+        const f = await reducirImagen(d.archivo);
+        const ext = f.type === 'application/pdf' ? 'pdf' : f.type === 'image/png' ? 'png' : 'jpg';
+        const ruta = `${carpeta}/${i + 1}.${ext}`;
+        await subir(f, ruta); d.el._ruta = ruta;
+      }
+    }
+    btn.textContent = 'Guardando…';
+    const lista = js.map((d) => ({ tipo_documento: d.tipo_documento, numero_documento: d.numero_documento, nombre: d.nombre,
+      apellido: d.apellido, fecha_nacimiento: d.fecha_nacimiento, numero_camiseta: d.numero_camiseta, documento_path: d.el._ruta }));
+    if (modo === 'nueva') {
+      const codigo = await rpc('inscribir_equipo', {
+        p_categoria_id: Number($('categoria').value), p_equipo_id: Number($('equipo').value),
+        p_delegado_nombre: $('delNombre').value, p_delegado_celular: $('delCelular').value,
+        p_declaracion: true, p_consentimiento_version: VERSION_TEXTO, p_jugadores: lista });
+      $('formulario').style.display = 'none';
+      $('mensaje').innerHTML = `<div class="exito"><div>✅ <b>¡Inscripción recibida!</b></div>
+        <div class="codigo">${escapar(codigo)}</div>
+        <p>Guarda este código y tómale una captura de pantalla: lo necesitas para <b>agregar más jugadores</b> hasta completar tu plantilla.</p>
+        <button type="button" class="primario" id="btnSeguir">Agregar más jugadores ahora</button></div>`;
+      $('btnSeguir').addEventListener('click', () => { setModo('agregar'); $('codigo').value = codigo; buscarInscripcion(); });
+    } else {
+      const total = await rpc('agregar_jugadores', { p_codigo: insc.codigo, p_jugadores: lista });
+      $('formulario').style.display = '';
+      await buscarInscripcion();
+      mostrar('info', `✅ Jugadores agregados. Tu equipo ahora tiene <b>${total}/${insc.max_jugadores}</b> jugadores.`);
+      btn.disabled = false; btn.textContent = 'Agregar jugadores';
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } catch (err) {
+    mostrar('error', escapar(err.message)); btn.disabled = false; btn.textContent = modo === 'nueva' ? 'Enviar inscripción' : 'Agregar jugadores';
+  }
+});
+
+$('btnAgregar').addEventListener('click', agregarJugador);
+agregarJugador(); cargarCategorias();
+</script>
+</body>
+</html>
