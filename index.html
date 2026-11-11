@@ -41,6 +41,7 @@
   .check input { width: auto; margin-top: 4px; }
   .oculto { position: absolute; left: -9999px; }
   .nota { font-size: .8rem; color: var(--gris); }
+  .foto-prev { width: 72px; height: 96px; object-fit: cover; border-radius: 8px; border: 1px solid var(--linea); margin-top: 6px; display: block; }
   .exito { text-align: center; padding: 24px 16px; border: 2px solid var(--acento); border-radius: 14px; background: var(--card); }
   .codigo { font-size: 2rem; font-weight: 800; letter-spacing: .08em; margin: 10px 0; }
   .modos { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
@@ -100,7 +101,7 @@
       <label class="check"><input type="checkbox" id="decl">
         <span>Declaro que cuento con la autorización firmada de los acudientes de cada jugador menor de edad inscrito, y que la entregaré a la organización cuando la solicite.</span></label>
       <label class="check"><input type="checkbox" id="datos">
-        <span>Autorizo el tratamiento de los datos personales de los jugadores inscritos para la gestión del torneo, conforme a la Ley 1581 de 2012. <i>[Texto definitivo y política de tratamiento: los entrega el organizador.]</i></span></label>
+        <span>Autorizo el tratamiento de los datos personales de los jugadores inscritos, incluida su fotografía (para su identificación y la elaboración de escarapelas), para la gestión del torneo, conforme a la Ley 1581 de 2012. <i>[Texto definitivo y política de tratamiento: los entrega el organizador.]</i></span></label>
     </fieldset>
 
     <input class="oculto" type="text" id="web" tabindex="-1" autocomplete="off" aria-hidden="true">
@@ -116,8 +117,11 @@
 // =====================================================================
 const SUPABASE_URL = "https://bromcqhjewakfqokeytb.supabase.co";
 const SUPABASE_KEY = "sb_publishable_4JPe8F2TewAOi4OlNsu1kQ_nEpz9rCy";     // clave pública (sb_publishable_...)
-const VERSION_TEXTO = "v1";                               // versión del texto de autorización
-const MAX_MB = 10;                                        // debe coincidir con el bucket
+const VERSION_TEXTO = "v2";                               // versión del texto de autorización (v2: incluye la fotografía)
+const MAX_MB = 10;                                        // documento: debe coincidir con el bucket 'documentos'
+const FOTO_LADO = 800;                                    // la foto se reduce a este lado máximo (px)
+const FOTO_MIN = 300;                                     // lado menor mínimo aceptado (px), para que la escarapela salga nítida
+const FOTO_MAX_MB = 15;                                   // peso máximo de la foto original del celular (se reduce antes de subir)
 const TIPOS_DOC = [['RC', 'Registro civil'], ['TI', 'Tarjeta de identidad'], ['CC', 'Cédula de ciudadanía'], ['CE', 'Cédula de extranjería'], ['PA', 'Pasaporte']];
 
 // =====================================================================
@@ -159,7 +163,7 @@ $('categoria').addEventListener('change', async (e) => {
   limites = { min: 1, max: cat.max_jugadores };
   $('notaLimites').textContent = `Puedes enviar hasta ${cat.max_jugadores} jugadores` +
     (cat.min_jugadores > 1 ? ` (para competir se exigen al menos ${cat.min_jugadores}; puedes completarlos después)` : '') +
-    `. Cada uno con la foto o PDF de su documento (JPG, PNG o PDF, máximo ${MAX_MB} MB).`;
+    `. Cada uno con la foto o PDF de su documento (JPG, PNG o PDF, máximo ${MAX_MB} MB) y una foto de su rostro.`;
   renumerar();
   sel.disabled = true; sel.innerHTML = '<option value="">Cargando equipos…</option>';
   try {
@@ -207,7 +211,7 @@ async function buscarInscripcion() {
       (insc.jugadores < insc.min_jugadores ? ` · faltan ${insc.min_jugadores - insc.jugadores} para el mínimo (${insc.min_jugadores})` : '');
     if (restantes <= 0) { $('fsJugadores').hidden = true; $('btnEnviar').hidden = true; mostrar('info', 'Tu plantilla ya está completa.'); return; }
     limites = { min: 1, max: restantes };
-    $('notaLimites').textContent = `Puedes agregar hasta ${restantes} jugador(es) más. Cada uno con la foto o PDF de su documento.`;
+    $('notaLimites').textContent = `Puedes agregar hasta ${restantes} jugador(es) más. Cada uno con la foto o PDF de su documento y una foto de su rostro.`;
     $('fsJugadores').hidden = false; $('btnEnviar').hidden = false; $('mensaje').innerHTML = '';
     reiniciarJugadores();
   } catch (e) { mostrar('error', escapar(e.message)); }
@@ -230,6 +234,7 @@ function agregarJugador() {
       <div><label>Fecha de nacimiento</label><input type="date" class="fecha" min="1950-01-01" max="${new Date().toISOString().slice(0, 10)}"><div class="edad"></div></div>
       <div><label>N.º de camiseta</label><input type="number" class="camiseta" min="0" max="999"></div>
       <div><label>Foto o PDF del documento</label><input type="file" class="archivo" accept="image/jpeg,image/png,application/pdf"><div class="archivo-info"></div></div>
+      <div><label>Foto del jugador (rostro, de frente, fondo claro)</label><input type="file" class="foto" accept="image/jpeg,image/png"><div class="foto-info archivo-info"></div><img class="foto-prev" alt="" hidden></div>
     </div>`;
   div.querySelector('.fecha').addEventListener('input', (e) => {
     const ed = calcularEdad(e.target.value); div.querySelector('.edad').textContent = ed === '' ? '' : `Edad: ${ed} años`;
@@ -240,6 +245,22 @@ function agregarJugador() {
     if (!['image/jpeg', 'image/png', 'application/pdf'].includes(f.type)) { info.textContent = '✘ Tipo no permitido. Usa JPG, PNG o PDF.'; e.target.value = ''; return; }
     if (f.size > MAX_MB * 1048576) { info.textContent = `✘ El archivo pesa más de ${MAX_MB} MB.`; e.target.value = ''; return; }
     info.textContent = `✔ ${f.name} (${(f.size / 1048576).toFixed(2)} MB)`;
+  });
+  div.querySelector('.foto').addEventListener('change', async (e) => {
+    const f = e.target.files[0], info = div.querySelector('.foto-info'), prev = div.querySelector('.foto-prev');
+    div._foto = null; div._rutaFoto = null; prev.hidden = true;
+    if (!f) { info.textContent = ''; return; }
+    if (!['image/jpeg', 'image/png'].includes(f.type)) { info.textContent = '✘ La foto debe ser JPG o PNG.'; e.target.value = ''; return; }
+    if (f.size > FOTO_MAX_MB * 1048576) { info.textContent = `✘ La foto pesa más de ${FOTO_MAX_MB} MB.`; e.target.value = ''; return; }
+    info.textContent = 'Procesando foto…';
+    try {
+      div._foto = await reducirFoto(f);
+      prev.src = URL.createObjectURL(div._foto); prev.hidden = false;
+      info.textContent = `✔ Foto lista (${Math.round(div._foto.size / 1024)} KB)`;
+    } catch (err) {
+      info.textContent = err.message === 'pequena' ? `✘ La foto es muy pequeña (mínimo ${FOTO_MIN} px). Toma otra con mejor calidad.` : '✘ No se pudo leer la foto. Intenta con otra (JPG o PNG).';
+      e.target.value = '';
+    }
   });
   div.querySelector('.quitar').addEventListener('click', () => { div.remove(); renumerar(); });
   $('listaJugadores').appendChild(div); renumerar();
@@ -262,7 +283,8 @@ function leerJugadores() {
     apellido: f.querySelector('.apellido').value.trim(),
     fecha_nacimiento: f.querySelector('.fecha').value,
     numero_camiseta: f.querySelector('.camiseta').value === '' ? null : Number(f.querySelector('.camiseta').value),
-    archivo: f.querySelector('.archivo').files[0] || null
+    archivo: f.querySelector('.archivo').files[0] || null,
+    foto: f._foto || null
   }));
 }
 function validar(js) {
@@ -283,6 +305,7 @@ function validar(js) {
     if (d.numero_camiseta !== null) { if (cams.has(d.numero_camiseta)) return `Jugador ${n}: la camiseta ${d.numero_camiseta} está repetida.`; cams.add(d.numero_camiseta); }
     const ed = calcularEdad(d.fecha_nacimiento); if (ed === '' || ed < 4 || ed > 90) return `Jugador ${n}: revisa la fecha de nacimiento.`;
     if (!d.archivo && !d.el._ruta) return `Jugador ${n}: adjunta la foto o PDF del documento.`;
+    if (!d.foto && !d.el._rutaFoto) return `Jugador ${n}: adjunta la foto del jugador.`;
   }
   if (modo === 'nueva' && (!$('decl').checked || !$('datos').checked)) return 'Debes aceptar las dos autorizaciones.';
   return null;
@@ -299,8 +322,21 @@ async function reducirImagen(file) {
     return blob && blob.size < file.size ? new File([blob], 'doc.jpg', { type: 'image/jpeg' }) : file;
   } catch (e) { return file; }
 }
-async function subir(file, ruta) {
-  const r = await fetch(`${SUPABASE_URL}/storage/v1/object/documentos/${ruta}`, {
+// La foto SIEMPRE se reduce y se convierte a JPG: así pesa poco, queda derecha (corrige la rotación
+// del celular) y todas las escarapelas tienen el mismo formato.
+async function reducirFoto(file) {
+  const bmp = await createImageBitmap(file);
+  if (Math.min(bmp.width, bmp.height) < FOTO_MIN) throw new Error('pequena');
+  const esc = Math.min(1, FOTO_LADO / Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas'); c.width = Math.round(bmp.width * esc); c.height = Math.round(bmp.height * esc);
+  const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);   // fondo blanco si el PNG era transparente
+  ctx.drawImage(bmp, 0, 0, c.width, c.height);
+  const blob = await new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.85));
+  if (!blob) throw new Error('fallo');
+  return new File([blob], 'foto.jpg', { type: 'image/jpeg' });
+}
+async function subir(bucket, file, ruta) {
+  const r = await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${ruta}`, {
     method: 'POST', headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY, 'Content-Type': file.type }, body: file });
   if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.message || 'No se pudo subir un archivo'); }
 }
@@ -317,16 +353,21 @@ $('formulario').addEventListener('submit', async (e) => {
     for (let i = 0; i < js.length; i++) {
       const d = js[i];
       if (!d.el._ruta) {                              // si ya se subió en un intento anterior, no se repite
-        btn.textContent = `Subiendo documentos… ${i + 1}/${js.length}`;
+        btn.textContent = `Subiendo archivos… ${i + 1}/${js.length}`;
         const f = await reducirImagen(d.archivo);
         const ext = f.type === 'application/pdf' ? 'pdf' : f.type === 'image/png' ? 'png' : 'jpg';
         const ruta = `${carpeta}/${i + 1}.${ext}`;
-        await subir(f, ruta); d.el._ruta = ruta;
+        await subir('documentos', f, ruta); d.el._ruta = ruta;
+      }
+      if (!d.el._rutaFoto) {
+        btn.textContent = `Subiendo archivos… ${i + 1}/${js.length}`;
+        const rutaFoto = `${carpeta}/${i + 1}.jpg`;
+        await subir('fotos', d.foto, rutaFoto); d.el._rutaFoto = rutaFoto;
       }
     }
     btn.textContent = 'Guardando…';
     const lista = js.map((d) => ({ tipo_documento: d.tipo_documento, numero_documento: d.numero_documento, nombre: d.nombre,
-      apellido: d.apellido, fecha_nacimiento: d.fecha_nacimiento, numero_camiseta: d.numero_camiseta, documento_path: d.el._ruta }));
+      apellido: d.apellido, fecha_nacimiento: d.fecha_nacimiento, numero_camiseta: d.numero_camiseta, documento_path: d.el._ruta, foto_path: d.el._rutaFoto }));
     if (modo === 'nueva') {
       const codigo = await rpc('inscribir_equipo', {
         p_categoria_id: Number($('categoria').value), p_equipo_id: Number($('equipo').value),
