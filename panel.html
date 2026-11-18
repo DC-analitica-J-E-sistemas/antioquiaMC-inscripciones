@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Panel — Antioquia Metropolitan Cup</title>
+<style>
+  :root {
+    --acento: #12b04a; --texto: #111; --gris: #5b6470; --linea: #dfe3e8;
+    --fondo: #f5f7f6; --card: #fff; --rojo: #c0392b; --ambar: #b7791f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --texto: #f2f4f3; --gris: #9aa5b1; --linea: #2c3338; --fondo: #0f1311; --card: #181d1a; --acento: #2fd16a; --rojo: #ff7b6b; --ambar: #f0b84a; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--fondo); color: var(--texto); line-height: 1.4; }
+  header { background: #0b0b0b; padding: 12px 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  header img { height: 64px; width: auto; }
+  header h1 { color: #fff; font-size: 1.1rem; margin: 0; font-weight: 650; }
+  header p { color: #b8c2bc; margin: 2px 0 0; font-size: .85rem; }
+  header .sesion { margin-left: auto; display: flex; gap: 10px; align-items: center; color: #b8c2bc; font-size: .85rem; }
+  main { max-width: 1250px; margin: 0 auto; padding: 18px 16px 60px; }
+  .card { border: 1px solid var(--linea); background: var(--card); border-radius: 12px; padding: 18px; }
+  .login { max-width: 380px; margin: 40px auto; }
+  .login h2 { margin: 0 0 12px; font-size: 1.1rem; }
+  label { display: block; font-size: .82rem; color: var(--gris); margin: 10px 0 4px; }
+  input, select { width: 100%; padding: 9px 10px; border: 1px solid var(--linea); border-radius: 8px; font: inherit; background: var(--card); color: var(--texto); }
+  input:focus, select:focus { outline: 2px solid var(--acento); outline-offset: 1px; }
+  button { font: inherit; cursor: pointer; border-radius: 8px; padding: 8px 14px; border: 1px solid var(--linea); background: var(--card); color: var(--texto); }
+  button.primario { background: var(--acento); color: #06210f; border-color: var(--acento); font-weight: 650; }
+  button.peligro { color: var(--rojo); }
+  button:disabled { opacity: .6; cursor: not-allowed; }
+  button.chico { padding: 3px 9px; font-size: .8rem; }
+  .login button.primario { width: 100%; margin-top: 16px; padding: 11px; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .tabs button { border-radius: 999px; }
+  .tabs button.activo { background: var(--acento); color: #06210f; border-color: var(--acento); font-weight: 650; }
+  .barra { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+  .barra select, .barra input { width: auto; min-width: 150px; }
+  .barra input[type=search] { flex: 1; min-width: 200px; }
+  .espacio { flex: 1; }
+  .tabla-wrap { overflow-x: auto; border: 1px solid var(--linea); border-radius: 12px; background: var(--card); }
+  table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+  th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--linea); vertical-align: middle; }
+  th { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: var(--gris); white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+  tr.retirado td { opacity: .55; }
+  td small { color: var(--gris); }
+  code { font-size: .85rem; }
+  .pill { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: .75rem; font-weight: 650; border: 1px solid; }
+  .pill.verde { color: var(--acento); } .pill.rojo { color: var(--rojo); } .pill.ambar { color: var(--ambar); }
+  .miniatura { width: 38px; height: 50px; object-fit: cover; border-radius: 6px; border: 1px solid var(--linea); cursor: pointer; display: block; background: var(--fondo); }
+  .sinfoto { width: 38px; height: 50px; border-radius: 6px; border: 1px dashed var(--linea); display: flex; align-items: center; justify-content: center; color: var(--gris); font-size: .7rem; }
+  .pie { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-top: 10px; font-size: .85rem; color: var(--gris); }
+  .pager { display: flex; gap: 6px; align-items: center; }
+  .aviso { padding: 10px 14px; border-radius: 10px; margin: 0 0 12px; border: 1px solid var(--linea); }
+  .aviso.error { border-color: var(--rojo); color: var(--rojo); }
+  .aviso.ok { border-color: var(--acento); }
+  .chip { display: inline-flex; gap: 8px; align-items: center; padding: 4px 6px 4px 12px; border: 1px solid var(--acento); border-radius: 999px; font-size: .85rem; margin-bottom: 10px; }
+  .vacio { padding: 28px; text-align: center; color: var(--gris); }
+  [hidden] { display: none !important; }
+  footer { text-align: center; padding: 20px 16px 36px; color: var(--gris); font-size: .85rem; }
+</style>
+</head>
+<body>
+<header>
+  <img src="img/torneo.png" alt="Antioquia Metropolitan Cup" onerror="this.style.display='none'">
+  <div><h1>Panel de la organización</h1><p>Inscripciones — Antioquia Metropolitan Cup</p></div>
+  <div class="sesion" id="sesion" hidden><span id="usuario"></span><button type="button" id="btnSalir" class="chico">Salir</button></div>
+</header>
+
+<main>
+  <div id="aviso"></div>
+
+  <!-- ===== Inicio de sesión ===== -->
+  <section id="vistaLogin" class="card login" hidden>
+    <h2>Iniciar sesión</h2>
+    <form id="formLogin">
+      <label for="email">Correo</label><input id="email" type="email" autocomplete="username" required>
+      <label for="clave">Contraseña</label><input id="clave" type="password" autocomplete="current-password" required>
+      <button type="submit" class="primario" id="btnEntrar">Entrar</button>
+    </form>
+  </section>
+
+  <!-- ===== Panel ===== -->
+  <section id="vistaApp" hidden>
+    <div class="tabs" id="tabs">
+      <button type="button" data-tab="insc" class="activo"></button>
+      <button type="button" data-tab="jug"></button>
+      <button type="button" data-tab="rev"></button>
+      <button type="button" data-tab="inc"></button>
+    </div>
+
+    <div class="barra">
+      <select id="fCat" aria-label="Categoría"></select>
+      <select id="fEstado" aria-label="Estado">
+        <option value="">Todos los estados</option>
+        <option value="act">Solo activos</option>
+        <option value="ret">Solo retirados</option>
+      </select>
+      <input id="fTexto" type="search" placeholder="Buscar…" aria-label="Buscar" autocomplete="off">
+      <span class="espacio"></span>
+      <button type="button" id="btnActualizar">↻ Actualizar</button>
+      <button type="button" id="btnExcel" class="primario">⬇ Exportar Excel</button>
+    </div>
+    <div id="chip" class="chip" hidden></div>
+
+    <div class="tabla-wrap" id="tabla"></div>
+    <div class="pie">
+      <span id="estado"></span>
+      <div class="pager" id="pager" hidden>
+        <button type="button" id="btnAnt" class="chico">‹ Anterior</button>
+        <span id="pagTxt"></span>
+        <button type="button" id="btnSig" class="chico">Siguiente ›</button>
+      </div>
+    </div>
+  </section>
+</main>
+<footer>DC analítica J&amp;E sistemas</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.js"></script>
+<script>
+// =====================================================================
+// CONFIGURACIÓN — lo único que se cambia (la misma que usa el formulario)
+// =====================================================================
+const SUPABASE_URL = "https://bromcqhjewakfqokeytb.supabase.co";
+const SUPABASE_KEY = "sb_publishable_4JPe8F2TewAOi4OlNsu1kQ_nEpz9rCy";
+const SEG_DOCUMENTO = 120;     // el enlace para abrir un documento dura 2 minutos
+const SEG_FOTO = 3600;         // el enlace de las miniaturas dura 1 hora
+const POR_PAGINA = 50;
+const URL_XLSX = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+
+// =====================================================================
+const $ = (id) => document.getElementById(id);
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const D = { insc: [], jug: [], rev: [], inc: [] };   // datos cargados
+let tab = 'insc', pagina = 1, filtroInsc = null;
+const urls = {};                                       // enlaces firmados ya pedidos: "bucket/ruta" -> {url, hasta}
+
+// Todo lo que escribe el público (nombres, equipos…) se escapa antes de pintarlo en la página.
+function esc(t) { return String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function norm(t) { return String(t ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+function fecha(iso) { return iso ? new Date(iso).toLocaleString('es-CO', { timeZone: 'America/Bogota', dateStyle: 'short', timeStyle: 'short' }) : ''; }
+function cmp(a, b) { return String(a ?? '').localeCompare(String(b ?? ''), 'es', { numeric: true, sensitivity: 'base' }); }
+function aviso(tipo, texto) { $('aviso').innerHTML = texto ? `<div class="aviso ${tipo}">${esc(texto)}</div>` : ''; }
+
+// ---------- Sesión ----------
+function verLogin(mensaje) {
+  $('vistaApp').hidden = true; $('sesion').hidden = true; $('vistaLogin').hidden = false;
+  $('clave').value = ''; aviso(mensaje ? 'error' : '', mensaje || '');
+}
+async function entrar(user) {
+  const { data, error } = await sb.rpc('es_admin');
+  if (error || data !== true) {                // tiene cuenta, pero no es administrador
+    await sb.auth.signOut(); verLogin('Tu usuario no tiene permisos de administrador.'); return;
+  }
+  $('usuario').textContent = user.email; $('sesion').hidden = false;
+  $('vistaLogin').hidden = true; $('vistaApp').hidden = false; aviso('', '');
+  await cargar();
+}
+$('formLogin').addEventListener('submit', async (e) => {
+  e.preventDefault(); const b = $('btnEntrar'); b.disabled = true; b.textContent = 'Entrando…';
+  const { data, error } = await sb.auth.signInWithPassword({ email: $('email').value.trim(), password: $('clave').value });
+  b.disabled = false; b.textContent = 'Entrar';
+  if (error) { aviso('error', 'Correo o contraseña incorrectos.'); return; }
+  await entrar(data.user);
+});
+$('btnSalir').addEventListener('click', async () => { await sb.auth.signOut(); verLogin(); });
+sb.auth.onAuthStateChange((evento) => { if (evento === 'SIGNED_OUT') { $('vistaApp').hidden = true; $('sesion').hidden = true; $('vistaLogin').hidden = false; } });
+
+function manejarError(e) {
+  if (e && (e.status === 401 || /JWT|expired/i.test(e.message || ''))) { sb.auth.signOut(); verLogin('Tu sesión expiró. Entra de nuevo.'); return; }
+  aviso('error', 'No se pudo completar la acción: ' + ((e && e.message) || 'error de conexión'));
+}
+
+// ---------- Carga de datos ----------
+// La API devuelve máximo 1000 filas por consulta: se pide por tandas hasta traer todo.
+async function traerTodo(vista, orden) {
+  const salida = [], paso = 1000;
+  for (let desde = 0; ; desde += paso) {
+    const { data, error } = await sb.from(vista).select('*').order(orden).range(desde, desde + paso - 1);
+    if (error) throw error;
+    salida.push(...data);
+    if (data.length < paso) return salida;
+  }
+}
+async function cargar() {
+  $('estado').textContent = 'Cargando…';
+  try {
+    const [a, b, c, d] = await Promise.all([
+      traerTodo('v_panel_inscripciones', 'id'), traerTodo('v_panel_jugadores', 'planilla_id'),
+      traerTodo('jugadores_a_revisar', 'jugador_id'), traerTodo('inscripciones_incompletas', 'codigo')]);
+    D.insc = a; D.jug = b; D.rev = c; D.inc = d;
+    const cats = [...new Set(a.map((i) => i.categoria))].sort(cmp), antes = $('fCat').value;
+    $('fCat').innerHTML = '<option value="">Todas las categorías</option>' + cats.map((c) => `<option>${esc(c)}</option>`).join('');
+    if (cats.includes(antes)) $('fCat').value = antes;
+    $('estado').textContent = 'Actualizado a las ' + new Date().toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit' });
+    render();
+  } catch (e) { $('estado').textContent = ''; manejarError(e); }
+}
+
+// ---------- Filtros ----------
+function filtros() {
+  const cat = $('fCat').value, est = $('fEstado').value, t = norm($('fTexto').value);
+  const okEst = (r) => est === '' || (est === 'act' ? !r.retirado : r.retirado);
+  const okCat = (r) => !cat || r.categoria === cat;
+  const okTxt = (campos) => !t || norm(campos.join(' ')).includes(t);
+  return {
+    insc: () => D.insc.filter((i) => okCat(i) && okEst(i) && okTxt([i.codigo, i.equipo, i.delegado_nombre, i.delegado_celular]))
+      .sort((x, y) => cmp(x.categoria, y.categoria) || cmp(x.equipo, y.equipo)),
+    jug: () => D.jug.filter((j) => (!filtroInsc || j.inscripcion_id === filtroInsc) && okCat(j) && okEst(j) &&
+      okTxt([j.nombre, j.apellido, j.numero_documento, j.equipo, j.codigo]))
+      .sort((x, y) => cmp(x.categoria, y.categoria) || cmp(x.equipo, y.equipo) || ((x.numero_camiseta ?? 9999) - (y.numero_camiseta ?? 9999)) || cmp(x.apellido, y.apellido)),
+    rev: () => D.rev.filter((r) => okTxt([r.nombre, r.apellido, r.numero_documento, r.inscrito_en])).sort((x, y) => cmp(x.apellido, y.apellido)),
+    inc: () => D.inc.filter((r) => okCat(r) && okTxt([r.equipo, r.codigo, r.delegado_nombre, r.delegado_celular]))
+      .sort((x, y) => cmp(x.categoria, y.categoria) || cmp(x.equipo, y.equipo))
+  };
+}
+
+// ---------- Pintar ----------
+const COLUMNAS = {
+  insc: ['Código', 'Equipo', 'Categoría', 'Delegado', 'Celular', 'Jugadores', 'Estado', 'Inscrito', ''],
+  jug: ['Foto', 'Jugador', 'Documento', 'Edad', 'Equipo', 'Camiseta', 'Documento adjunto'],
+  rev: ['Jugador', 'Documento', 'Veces', 'Inscrito en', ''],
+  inc: ['Código', 'Equipo', 'Categoría', 'Jugadores', 'Delegado', 'Celular']
+};
+function filaHtml(t, r) {
+  if (t === 'insc') return `<tr class="${r.retirado ? 'retirado' : ''}">
+    <td><code>${esc(r.codigo)}</code></td><td>${esc(r.equipo)}</td><td>${esc(r.categoria)}</td>
+    <td>${esc(r.delegado_nombre)}</td><td>${esc(r.delegado_celular)}</td>
+    <td>${r.jugadores}/${r.max_jugadores}${r.jugadores < r.min_jugadores ? ' <span class="pill ambar" title="Menos del mínimo">⚠ bajo mínimo</span>' : ''}</td>
+    <td><span class="pill ${r.retirado ? 'rojo' : 'verde'}">${r.retirado ? 'Retirado' : 'Activo'}</span></td>
+    <td>${esc(fecha(r.creado_en))}</td>
+    <td style="white-space:nowrap"><button type="button" class="chico" data-acc="ver" data-id="${r.id}">Ver jugadores</button>
+      <button type="button" class="chico ${r.retirado ? '' : 'peligro'}" data-acc="ret" data-id="${r.id}">${r.retirado ? 'Reactivar' : 'Retirar'}</button></td></tr>`;
+  if (t === 'jug') return `<tr class="${r.retirado ? 'retirado' : ''}">
+    <td>${r.foto_path ? `<img class="miniatura" alt="Foto" data-ruta="${esc(r.foto_path)}" data-acc="foto">` : '<div class="sinfoto">sin foto</div>'}</td>
+    <td><b>${esc(r.apellido)}</b> ${esc(r.nombre)}</td><td>${esc(r.tipo_documento)} ${esc(r.numero_documento)}</td><td>${r.edad ?? ''}</td>
+    <td>${esc(r.equipo)}<br><small>${esc(r.categoria)}${r.retirado ? ' · retirado' : ''}</small></td>
+    <td>${r.numero_camiseta ?? '—'}</td>
+    <td><button type="button" class="chico" data-acc="doc" data-ruta="${esc(r.documento_path)}">Ver documento</button></td></tr>`;
+  if (t === 'rev') return `<tr><td><b>${esc(r.apellido)}</b> ${esc(r.nombre)}</td><td>${esc(r.tipo_documento)} ${esc(r.numero_documento)}</td>
+    <td>${r.veces_inscrito}</td><td>${esc(r.inscrito_en)}</td>
+    <td><button type="button" class="chico" data-acc="buscar" data-doc="${esc(r.numero_documento)}">Ver sus inscripciones</button></td></tr>`;
+  return `<tr><td><code>${esc(r.codigo)}</code></td><td>${esc(r.equipo)}</td><td>${esc(r.categoria)}</td>
+    <td><span class="pill ambar">${r.jugadores}</span> de mínimo ${r.min_jugadores} (máx. ${r.max_jugadores})</td>
+    <td>${esc(r.delegado_nombre)}</td><td>${esc(r.delegado_celular)}</td></tr>`;
+}
+function render() {
+  const nombres = { insc: 'Equipos', jug: 'Jugadores', rev: 'Por revisar', inc: 'Incompletas' };
+  document.querySelectorAll('#tabs button').forEach((b) => {
+    b.textContent = `${nombres[b.dataset.tab]} (${D[b.dataset.tab].length})`; b.classList.toggle('activo', b.dataset.tab === tab);
+  });
+  $('fCat').hidden = tab === 'rev'; $('fEstado').hidden = !(tab === 'insc' || tab === 'jug');
+  const chip = $('chip'); const ins = filtroInsc && D.insc.find((i) => i.id === filtroInsc);
+  chip.hidden = !(tab === 'jug' && ins);
+  if (!chip.hidden) chip.innerHTML = `Equipo: <b>${esc(ins.equipo)}</b> (${esc(ins.categoria)}) <button type="button" class="chico" id="btnQuitarChip">✕</button>`;
+  const filas = filtros()[tab]();
+  const total = filas.length, paginas = Math.max(1, Math.ceil(total / POR_PAGINA));
+  pagina = Math.min(pagina, paginas);
+  const visibles = filas.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
+  $('tabla').innerHTML = total
+    ? `<table><thead><tr>${COLUMNAS[tab].map((c) => `<th>${c}</th>`).join('')}</tr></thead><tbody>${visibles.map((r) => filaHtml(tab, r)).join('')}</tbody></table>`
+    : `<div class="vacio">${{ insc: 'No hay equipos inscritos con esos filtros.', jug: 'No hay jugadores con esos filtros.',
+        rev: 'Ningún jugador aparece en más de un equipo o categoría.', inc: 'Todos los equipos alcanzan el mínimo de jugadores.' }[tab]}</div>`;
+  $('pager').hidden = paginas <= 1;
+  $('pagTxt').textContent = `Página ${pagina} de ${paginas} · ${total} registros`;
+  $('btnAnt').disabled = pagina <= 1; $('btnSig').disabled = pagina >= paginas;
+  if (tab === 'jug') cargarMiniaturas();
+}
+
+// ---------- Archivos privados: enlaces temporales ----------
+async function enlace(bucket, rutas, seg) {
+  const falta = rutas.filter((r) => !urls[bucket + '/' + r] || urls[bucket + '/' + r].hasta < Date.now());
+  if (falta.length) {
+    const { data, error } = await sb.storage.from(bucket).createSignedUrls(falta, seg);
+    if (error) throw error;
+    data.forEach((d) => { if (d.signedUrl) urls[bucket + '/' + d.path] = { url: d.signedUrl, hasta: Date.now() + (seg - 60) * 1000 }; });
+  }
+  return rutas.map((r) => (urls['' + bucket + '/' + r] || {}).url || null);
+}
+async function cargarMiniaturas() {
+  const imgs = [...document.querySelectorAll('img.miniatura')]; if (!imgs.length) return;
+  try {
+    const lista = await enlace('fotos', imgs.map((i) => i.dataset.ruta), SEG_FOTO);
+    imgs.forEach((img, k) => { if (lista[k]) img.src = lista[k]; else img.replaceWith(Object.assign(document.createElement('div'), { className: 'sinfoto', textContent: 'error' })); });
+  } catch (e) { manejarError(e); }
+}
+async function abrirDocumento(ruta) {
+  const w = window.open('', '_blank');             // se abre ANTES de pedir el enlace para que el navegador no lo bloquee
+  if (w) w.opener = null;
+  try {
+    const [u] = await enlace('documentos', [ruta], SEG_DOCUMENTO);
+    if (!u) throw new Error('No se pudo generar el enlace del documento');
+    if (w) w.location.href = u; else aviso('error', 'El navegador bloqueó la ventana. Permite ventanas emergentes para este sitio.');
+  } catch (e) { if (w) w.close(); manejarError(e); }
+}
+
+// ---------- Acciones ----------
+async function cambiarRetiro(id) {
+  const i = D.insc.find((x) => x.id === id); if (!i) return;
+  const nuevo = !i.retirado;
+  const pregunta = nuevo
+    ? `¿Retirar a ${i.equipo} (${i.categoria})?\n\nSus jugadores se conservan, pero el equipo ya no podrá agregar jugadores con su código.`
+    : `¿Reactivar a ${i.equipo} (${i.categoria})?`;
+  if (!confirm(pregunta)) return;
+  const { error } = await sb.rpc('admin_marcar_retirado', { p_inscripcion_id: id, p_retirado: nuevo });
+  if (error) { manejarError(error); return; }
+  aviso('ok', `${i.equipo}: ${nuevo ? 'marcado como retirado' : 'reactivado'}.`);
+  await cargar();
+}
+$('tabla').addEventListener('click', (e) => {
+  const el = e.target.closest('[data-acc]'); if (!el) return; const acc = el.dataset.acc;
+  if (acc === 'ret') cambiarRetiro(Number(el.dataset.id));
+  else if (acc === 'ver') { filtroInsc = Number(el.dataset.id); tab = 'jug'; pagina = 1; $('fCat').value = ''; $('fEstado').value = ''; $('fTexto').value = ''; render(); }
+  else if (acc === 'doc') abrirDocumento(el.dataset.ruta);
+  else if (acc === 'foto') { const u = urls['fotos/' + el.dataset.ruta]; if (u) window.open(u.url, '_blank', 'noopener'); }
+  else if (acc === 'buscar') { tab = 'jug'; filtroInsc = null; pagina = 1; $('fEstado').value = ''; $('fCat').value = ''; $('fTexto').value = el.dataset.doc; render(); }
+});
+$('chip').addEventListener('click', (e) => { if (e.target.id === 'btnQuitarChip') { filtroInsc = null; pagina = 1; render(); } });
+$('tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; tab = b.dataset.tab; pagina = 1; if (tab !== 'jug') filtroInsc = null; render(); });
+['fCat', 'fEstado'].forEach((id) => $(id).addEventListener('change', () => { pagina = 1; render(); }));
+$('fTexto').addEventListener('input', () => { pagina = 1; render(); });
+$('btnAnt').addEventListener('click', () => { pagina--; render(); });
+$('btnSig').addEventListener('click', () => { pagina++; render(); });
+$('btnActualizar').addEventListener('click', cargar);
+
+// ---------- Exportar a Excel (sin adjuntos: ni documentos ni fotos) ----------
+function cargarXLSX() {
+  return new Promise((ok, no) => {
+    if (window.XLSX) return ok();
+    const s = document.createElement('script'); s.src = URL_XLSX; s.onload = ok;
+    s.onerror = () => no(new Error('No se pudo cargar la librería de Excel. Revisa tu conexión.')); document.head.appendChild(s);
+  });
+}
+function anchos(filas) {
+  const claves = Object.keys(filas[0] || {});
+  return claves.map((k) => ({ wch: Math.min(40, Math.max(k.length, ...filas.map((f) => String(f[k] ?? '').length)) + 2) }));
+}
+async function exportar() {
+  const b = $('btnExcel'); b.disabled = true; b.textContent = 'Preparando…';
+  try {
+    await cargarXLSX();
+    const equipos = [...D.insc].sort((x, y) => cmp(x.categoria, y.categoria) || cmp(x.equipo, y.equipo)).map((i) => ({
+      'Código': i.codigo, 'Equipo': i.equipo, 'Categoría': i.categoria, 'Delegado': i.delegado_nombre, 'Celular delegado': i.delegado_celular,
+      'Jugadores': i.jugadores, 'Mínimo': i.min_jugadores, 'Máximo': i.max_jugadores, 'Estado': i.retirado ? 'Retirado' : 'Activo',
+      'Fecha de inscripción': new Date(i.creado_en).toLocaleString('sv-SE', { timeZone: 'America/Bogota' }) }));   // 2026-11-10 10:00:00: ordena bien en Excel
+    const jugadores = [...D.jug].sort((x, y) => cmp(x.categoria, y.categoria) || cmp(x.equipo, y.equipo) || ((x.numero_camiseta ?? 9999) - (y.numero_camiseta ?? 9999))).map((j) => ({
+      'Categoría': j.categoria, 'Equipo': j.equipo, 'Estado del equipo': j.retirado ? 'Retirado' : 'Activo', 'Camiseta': j.numero_camiseta ?? '',
+      'Apellidos': j.apellido, 'Nombres': j.nombre, 'Tipo de documento': j.tipo_documento, 'Número de documento': String(j.numero_documento),
+      'Fecha de nacimiento': j.fecha_nacimiento, 'Edad': j.edad }));
+    const wb = XLSX.utils.book_new();
+    [['Equipos', equipos], ['Jugadores', jugadores]].forEach(([nombre, filas]) => {
+      const ws = XLSX.utils.json_to_sheet(filas); ws['!cols'] = anchos(filas); XLSX.utils.book_append_sheet(wb, ws, nombre);
+    });
+    const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+    XLSX.writeFile(wb, `AMC_inscripciones_${hoy}.xlsx`);
+    aviso('ok', `Excel generado: ${equipos.length} equipos y ${jugadores.length} jugadores (sin documentos ni fotos).`);
+  } catch (e) { aviso('error', e.message || 'No se pudo generar el Excel'); }
+  b.disabled = false; b.textContent = '⬇ Exportar Excel';
+}
+$('btnExcel').addEventListener('click', exportar);
+
+// ---------- Arranque ----------
+(async () => {
+  const { data } = await sb.auth.getSession();
+  if (data.session) await entrar(data.session.user); else verLogin();
+})();
+</script>
+</body>
+</html>
