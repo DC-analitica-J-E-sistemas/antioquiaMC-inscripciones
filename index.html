@@ -232,7 +232,7 @@ function agregarJugador() {
       <div><label>Nombres</label><input class="nombre" maxlength="60"></div>
       <div><label>Apellidos</label><input class="apellido" maxlength="60"></div>
       <div><label>Fecha de nacimiento</label><input type="date" class="fecha" min="1950-01-01" max="${new Date().toISOString().slice(0, 10)}"><div class="edad"></div></div>
-      <div><label>N.º de camiseta</label><input type="number" class="camiseta" min="0" max="999"></div>
+      <div><label>N.º de camiseta*</label><input type="number" class="camiseta" min="0" max="999" required></div>
       <div><label>Foto o PDF del documento</label><input type="file" class="archivo" accept="image/jpeg,image/png,application/pdf"><div class="archivo-info"></div></div>
       <div><label>Foto del jugador (rostro, de frente, fondo claro)</label><input type="file" class="foto" accept="image/jpeg,image/png"><div class="foto-info archivo-info"></div><img class="foto-prev" alt="" hidden></div>
     </div>`;
@@ -302,7 +302,8 @@ function validar(js) {
     if (d.tipo_documento !== 'PA' && !/^\d{5,12}$/.test(d.numero_documento)) return `Jugador ${n}: el número de documento debe tener solo números.`;
     const k = d.tipo_documento + '-' + d.numero_documento;
     if (docs.has(k)) return `Jugador ${n}: el documento está repetido en este formulario.`; docs.add(k);
-    if (d.numero_camiseta !== null) { if (cams.has(d.numero_camiseta)) return `Jugador ${n}: la camiseta ${d.numero_camiseta} está repetida.`; cams.add(d.numero_camiseta); }
+    if (d.numero_camiseta === null) return `Jugador ${n}: escribe el número de camiseta.`;
+    if (cams.has(d.numero_camiseta)) return `Jugador ${n}: la camiseta ${d.numero_camiseta} está repetida.`; cams.add(d.numero_camiseta);   
     const ed = calcularEdad(d.fecha_nacimiento); if (ed === '' || ed < 4 || ed > 90) return `Jugador ${n}: revisa la fecha de nacimiento.`;
     if (!d.archivo && !d.el._ruta) return `Jugador ${n}: adjunta la foto o PDF del documento.`;
     if (!d.foto && !d.el._rutaFoto) return `Jugador ${n}: adjunta la foto del jugador.`;
