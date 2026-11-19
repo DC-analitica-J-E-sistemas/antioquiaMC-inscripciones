@@ -125,7 +125,7 @@
 // CONFIGURACIÓN — lo único que se cambia (la misma que usa el formulario)
 // =====================================================================
 const SUPABASE_URL = "https://bromcqhjewakfqokeytb.supabase.co";
-const SUPABASE_KEY = "sb_publishable_4JPe8F2TewAOi4OlNsu1kQ_nEpz9rCy";
+const SUPABASE_KEY = "sb_publishable_4JPe8F2TewAOi4OlNsu1kQ_nEpz9rCy";     // clave pública (sb_publishable_...)
 const SEG_DOCUMENTO = 120;     // el enlace para abrir un documento dura 2 minutos
 const SEG_FOTO = 3600;         // el enlace de las miniaturas dura 1 hora
 const POR_PAGINA = 50;
@@ -233,6 +233,7 @@ function filaHtml(t, r) {
     <td><span class="pill ${r.retirado ? 'rojo' : 'verde'}">${r.retirado ? 'Retirado' : 'Activo'}</span></td>
     <td>${esc(fecha(r.creado_en))}</td>
     <td style="white-space:nowrap"><button type="button" class="chico" data-acc="ver" data-id="${r.id}">Ver jugadores</button>
+      <button type="button" class="chico" data-acc="xls" data-id="${r.id}" title="Descargar el listado de este equipo con sus jugadores">⬇ Excel</button>
       <button type="button" class="chico ${r.retirado ? '' : 'peligro'}" data-acc="ret" data-id="${r.id}">${r.retirado ? 'Reactivar' : 'Retirar'}</button></td></tr>`;
   if (t === 'jug') return `<tr class="${r.retirado ? 'retirado' : ''}">
     <td>${r.foto_path ? `<img class="miniatura" alt="Foto" data-ruta="${esc(r.foto_path)}" data-acc="foto">` : '<div class="sinfoto">sin foto</div>'}</td>
@@ -313,6 +314,7 @@ async function cambiarRetiro(id) {
 $('tabla').addEventListener('click', (e) => {
   const el = e.target.closest('[data-acc]'); if (!el) return; const acc = el.dataset.acc;
   if (acc === 'ret') cambiarRetiro(Number(el.dataset.id));
+  else if (acc === 'xls') exportar(Number(el.dataset.id));
   else if (acc === 'ver') { filtroInsc = Number(el.dataset.id); tab = 'jug'; pagina = 1; $('fCat').value = ''; $('fEstado').value = ''; $('fTexto').value = ''; render(); }
   else if (acc === 'doc') abrirDocumento(el.dataset.ruta);
   else if (acc === 'foto') { const u = urls['fotos/' + el.dataset.ruta]; if (u) window.open(u.url, '_blank', 'noopener'); }
@@ -338,38 +340,58 @@ function anchos(filas) {
   const claves = Object.keys(filas[0] || {});
   return claves.map((k) => ({ wch: Math.min(40, Math.max(k.length, ...filas.map((f) => String(f[k] ?? '').length)) + 2) }));
 }
-function datosParaExportar() {
+// Lo que se exporta es lo que se ve filtrado en pantalla (en Equipos y en Jugadores), o un solo equipo
+// cuando se pulsa "⬇ Excel" en su fila. En "Por revisar" e "Incompletas" se exporta todo.
+// La hoja "Jugadores" es el LISTADO: una fila por integrante, con los datos del equipo y del delegado.
+function datosParaExportar(idEquipo) {
+  if (idEquipo) return { insc: D.insc.filter((i) => i.id === idEquipo), jug: D.jug.filter((j) => j.inscripcion_id === idEquipo) };
   const f = filtros();
   if (tab === 'insc') { const ins = f.insc(), ids = new Set(ins.map((i) => i.id)); return { insc: ins, jug: D.jug.filter((j) => ids.has(j.inscripcion_id)) }; }
   if (tab === 'jug') { const ju = f.jug(), ids = new Set(ju.map((j) => j.inscripcion_id)); return { insc: D.insc.filter((i) => ids.has(i.id)), jug: ju }; }
   return { insc: D.insc, jug: D.jug };
 }
-async function exportar() {
+function limpio(t) { return String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w-]+/g, '_').replace(/^_+|_+$/g, ''); }
+async function exportar(idEquipo) {
   const b = $('btnExcel'); b.disabled = true; b.textContent = 'Preparando…';
   try {
     await cargarXLSX();
-    const base = datosParaExportar();
+    const base = datosParaExportar(idEquipo);
+    const porInsc = new Map(D.insc.map((i) => [i.id, i]));
     const equipos = [...base.insc].sort((x, y) => cmp(x.categoria, y.categoria) || cmp(x.equipo, y.equipo)).map((i) => ({
       'Código': i.codigo, 'Equipo': i.equipo, 'Categoría': i.categoria, 'Delegado': i.delegado_nombre, 'Celular delegado': i.delegado_celular,
       'Jugadores': i.jugadores, 'Mínimo': i.min_jugadores, 'Máximo': i.max_jugadores, 'Estado': i.retirado ? 'Retirado' : 'Activo',
       'Fecha de inscripción': new Date(i.creado_en).toLocaleString('sv-SE', { timeZone: 'America/Bogota' }) }));   // 2026-11-10 10:00:00: ordena bien en Excel
-    const jugadores = [...base.jug].sort((x, y) => cmp(x.categoria, y.categoria) || cmp(x.equipo, y.equipo) || ((x.numero_camiseta ?? 9999) - (y.numero_camiseta ?? 9999))).map((j) => ({
-      'Categoría': j.categoria, 'Equipo': j.equipo, 'Estado del equipo': j.retirado ? 'Retirado' : 'Activo', 'Camiseta': j.numero_camiseta ?? '',
-      'Apellidos': j.apellido, 'Nombres': j.nombre, 'Tipo de documento': j.tipo_documento, 'Número de documento': String(j.numero_documento),
-      'Fecha de nacimiento': j.fecha_nacimiento, 'Edad': j.edad }));
+    const jugadores = [...base.jug].sort((x, y) => cmp(x.categoria, y.categoria) || cmp(x.equipo, y.equipo) || ((x.numero_camiseta ?? 9999) - (y.numero_camiseta ?? 9999))).map((j) => {
+      const i = porInsc.get(j.inscripcion_id) || {};
+      return {
+        'Categoría': j.categoria, 'Equipo': j.equipo, 'Código del equipo': i.codigo ?? j.codigo, 'Delegado': i.delegado_nombre ?? '', 'Celular delegado': i.delegado_celular ?? '',
+        'Estado del equipo': j.retirado ? 'Retirado' : 'Activo', 'Camiseta': j.numero_camiseta ?? '',
+        'Apellidos': j.apellido, 'Nombres': j.nombre, 'Tipo de documento': j.tipo_documento, 'Número de documento': String(j.numero_documento),
+        'Fecha de nacimiento': j.fecha_nacimiento, 'Edad': j.edad };
+    });
     const wb = XLSX.utils.book_new();
-    [['Equipos', equipos], ['Jugadores', jugadores]].forEach(([nombre, filas]) => {
-      const ws = XLSX.utils.json_to_sheet(filas); ws['!cols'] = anchos(filas); XLSX.utils.book_append_sheet(wb, ws, nombre);
+    [['Jugadores', jugadores], ['Equipos', equipos]].forEach(([nombre, filas]) => {
+      const ws = XLSX.utils.json_to_sheet(filas); ws['!cols'] = anchos(filas);
+      if (ws['!ref']) ws['!autofilter'] = { ref: ws['!ref'] };          // flechas de filtro en la fila de títulos
+      XLSX.utils.book_append_sheet(wb, ws, nombre);
     });
     const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
-    const cat = ['insc', 'jug'].includes(tab) && $('fCat').value ? $('fCat').value.replace(/[^\w-]+/g, '_') + '_' : '';
-    XLSX.writeFile(wb, `AMC_inscripciones_${cat}${hoy}.xlsx`);
-    const filtrado = base.insc.length !== D.insc.length || base.jug.length !== D.jug.length;
-    aviso('ok', `Excel generado: ${equipos.length} equipos y ${jugadores.length} jugadores${filtrado ? ' (solo lo filtrado en pantalla)' : ' (todos)'}, sin documentos ni fotos.`);
+    let archivo, mensaje;
+    if (idEquipo && base.insc[0]) {
+      archivo = `AMC_${limpio(base.insc[0].equipo)}_${limpio(base.insc[0].categoria)}_${hoy}.xlsx`;
+      mensaje = `Excel de ${base.insc[0].equipo} (${base.insc[0].categoria}): ${jugadores.length} jugadores, sin documentos ni fotos.`;
+    } else {
+      const cat = ['insc', 'jug'].includes(tab) && $('fCat').value ? limpio($('fCat').value) + '_' : '';
+      archivo = `AMC_inscripciones_${cat}${hoy}.xlsx`;
+      const filtrado = base.insc.length !== D.insc.length || base.jug.length !== D.jug.length;
+      mensaje = `Excel generado: ${equipos.length} equipos y ${jugadores.length} jugadores${filtrado ? ' (solo lo filtrado en pantalla)' : ' (todos)'}, sin documentos ni fotos.`;
+    }
+    XLSX.writeFile(wb, archivo);
+    aviso('ok', mensaje);
   } catch (e) { aviso('error', e.message || 'No se pudo generar el Excel'); }
   b.disabled = false; b.textContent = '⬇ Exportar Excel';
 }
-$('btnExcel').addEventListener('click', exportar);
+$('btnExcel').addEventListener('click', () => exportar());
 
 // ---------- Arranque ----------
 (async () => {
