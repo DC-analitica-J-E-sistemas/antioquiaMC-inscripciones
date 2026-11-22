@@ -60,6 +60,19 @@
   .chip { display: inline-flex; gap: 8px; align-items: center; padding: 4px 6px 4px 12px; border: 1px solid var(--acento); border-radius: 999px; font-size: .85rem; margin-bottom: 10px; }
   .vacio { padding: 28px; text-align: center; color: var(--gris); }
   [hidden] { display: none !important; }
+  td input.gol { width: 54px; text-align: center; padding: 6px 4px; }
+  td input.f, td input.h, td input.t { padding: 5px 6px; font-size: .85rem; }
+  td input.f { width: 140px; } td input.h { width: 100px; } td input.t { width: 110px; }
+  td.marcador { white-space: nowrap; text-align: center; }
+  td.der { text-align: right; font-weight: 600; } td.izq { font-weight: 600; }
+  td select.est { padding: 5px 6px; font-size: .85rem; width: auto; }
+  tr.guardado td { background: rgba(18,176,74,.14); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0 14px; }
+  .check { display: flex; gap: 8px; align-items: flex-start; font-size: .9rem; color: var(--texto); margin: 12px 0; }
+  .check input { width: auto; margin-top: 3px; }
+  .nota { color: var(--gris); font-size: .88rem; margin: 4px 0 8px; }
+  .lista { margin: 6px 0; padding-left: 18px; font-size: .88rem; } .lista.err { color: var(--rojo); } .lista.amb { color: var(--ambar); }
+  .acciones { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
   footer { text-align: center; padding: 20px 16px 36px; color: var(--gris); font-size: .85rem; }
 </style>
 </head>
@@ -86,13 +99,15 @@
   <!-- ===== Panel ===== -->
   <section id="vistaApp" hidden>
     <div class="tabs" id="tabs">
+      <button type="button" data-tab="par"></button>
       <button type="button" data-tab="insc" class="activo"></button>
       <button type="button" data-tab="jug"></button>
       <button type="button" data-tab="rev"></button>
       <button type="button" data-tab="inc"></button>
+      <button type="button" data-tab="fix">Fixture</button>
     </div>
 
-    <div class="barra">
+    <div class="barra" id="barraBase">
       <select id="fCat" aria-label="Categoría"></select>
       <select id="fEstado" aria-label="Estado">
         <option value="">Todos los estados</option>
@@ -104,15 +119,48 @@
       <button type="button" id="btnActualizar">↻ Actualizar</button>
       <button type="button" id="btnExcel" class="primario">⬇ Exportar Excel</button>
     </div>
+    <div class="barra" id="barraPar" hidden>
+      <select id="fGrupo" aria-label="Grupo"></select>
+      <select id="fPEstado" aria-label="Estado del partido">
+        <option value="">Todos los partidos</option>
+        <option value="pend">Pendientes</option>
+        <option value="jug">Con resultado</option>
+      </select>
+      <input id="fFecha" type="date" aria-label="Fecha" title="Solo esta fecha">
+      <button type="button" id="btnLimpiarFecha" class="chico">Todas las fechas</button>
+    </div>
     <div id="chip" class="chip" hidden></div>
 
     <div class="tabla-wrap" id="tabla"></div>
-    <div class="pie">
+    <div class="pie" id="pieBase">
       <span id="estado"></span>
       <div class="pager" id="pager" hidden>
         <button type="button" id="btnAnt" class="chico">‹ Anterior</button>
         <span id="pagTxt"></span>
         <button type="button" id="btnSig" class="chico">Siguiente ›</button>
+      </div>
+    </div>
+
+    <!-- ===== Fixture (solo administrador) ===== -->
+    <div id="vistaFix" class="card" hidden>
+      <h2 style="margin:0 0 4px;font-size:1.1rem">Cargar fixture</h2>
+      <p class="nota">Sube el archivo del generador de fixture (columnas <b>Jornada, Local, Visitante</b>). Si quieres, agrégale
+        <b>Fecha, Hora, Cancha, Juez</b> (y <b>Categoría, Fase, Grupo</b>) antes de subirlo; lo que no traiga lo completas después en la pestaña Partidos.
+        Los equipos se buscan por nombre entre los inscritos de la categoría. Nada se guarda hasta que pulses <b>Importar</b>.</p>
+      <div class="grid">
+        <div><label for="xCat">Categoría</label><select id="xCat"></select></div>
+        <div><label for="xFase">Fase</label><input id="xFase" list="listaFases" value="GRUPOS" autocomplete="off"></div>
+        <div><label for="xGrupo">Grupo</label><input id="xGrupo" placeholder="A, B, C… (vacío si no hay grupos)" autocomplete="off"></div>
+        <div><label for="xArchivo">Archivo (CSV o Excel)</label><input id="xArchivo" type="file" accept=".csv,.txt,.xlsx,.xls"></div>
+      </div>
+      <datalist id="listaFases"><option>GRUPOS</option><option>ORO</option><option>PLATA</option><option>OCTAVOS</option><option>CUARTOS</option><option>SEMIFINAL</option><option>FINAL</option></datalist>
+      <label class="check"><input type="checkbox" id="xReemplazar"><span>Reemplazar lo ya cargado de esa categoría, fase y grupo
+        (sirve para corregir un fixture mal cargado; se rechaza si ya tiene resultados).</span></label>
+      <div id="xVista"></div>
+      <div class="acciones">
+        <button type="button" id="btnXValidar">1. Revisar archivo</button>
+        <button type="button" id="btnXImportar" class="primario" disabled>2. Importar</button>
+        <button type="button" id="btnXPlantilla" class="chico">⬇ Plantilla de ejemplo</button>
       </div>
     </div>
   </section>
@@ -125,7 +173,7 @@
 // CONFIGURACIÓN — lo único que se cambia (la misma que usa el formulario)
 // =====================================================================
 const SUPABASE_URL = "https://bromcqhjewakfqokeytb.supabase.co";
-const SUPABASE_KEY = "sb_publishable_4JPe8F2TewAOi4OlNsu1kQ_nEpz9rCy";     // clave pública (sb_publishable_...)
+const SUPABASE_KEY = "PEGA_AQUI_LA_PUBLISHABLE_KEY";     // clave pública (sb_publishable_...)
 const SEG_DOCUMENTO = 120;     // el enlace para abrir un documento dura 2 minutos
 const SEG_FOTO = 3600;         // el enlace de las miniaturas dura 1 hora
 const POR_PAGINA = 50;
@@ -134,7 +182,8 @@ const URL_XLSX = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.m
 // =====================================================================
 const $ = (id) => document.getElementById(id);
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-const D = { insc: [], jug: [], rev: [], inc: [] };   // datos cargados
+const D = { insc: [], jug: [], rev: [], inc: [], par: [] };   // datos cargados
+let rol = null;                                        // 'admin' | 'resultados'
 let tab = 'insc', pagina = 1, filtroInsc = null;
 const urls = {};                                       // enlaces firmados ya pedidos: "bucket/ruta" -> {url, hasta}
 
@@ -151,11 +200,12 @@ function verLogin(mensaje) {
   $('clave').value = ''; aviso(mensaje ? 'error' : '', mensaje || '');
 }
 async function entrar(user) {
-  const { data, error } = await sb.rpc('es_admin');
-  if (error || data !== true) {                // tiene cuenta, pero no es administrador
-    await sb.auth.signOut(); verLogin('Tu usuario no tiene permisos de administrador.'); return;
+  const { data, error } = await sb.rpc('mi_rol');
+  if (error || (data !== 'admin' && data !== 'resultados')) {   // tiene cuenta, pero no está autorizado
+    await sb.auth.signOut(); verLogin('Tu usuario no tiene permisos para este panel.'); return;
   }
-  $('usuario').textContent = user.email; $('sesion').hidden = false;
+  rol = data; if (rol !== 'admin') tab = 'par';
+  $('usuario').textContent = user.email + (rol === 'admin' ? '' : ' · resultados'); $('sesion').hidden = false;
   $('vistaLogin').hidden = true; $('vistaApp').hidden = false; aviso('', '');
   await cargar();
 }
@@ -188,11 +238,17 @@ async function traerTodo(vista, orden) {
 async function cargar() {
   $('estado').textContent = 'Cargando…';
   try {
-    const [a, b, c, d] = await Promise.all([
-      traerTodo('v_panel_inscripciones', 'id'), traerTodo('v_panel_jugadores', 'planilla_id'),
-      traerTodo('jugadores_a_revisar', 'jugador_id'), traerTodo('inscripciones_incompletas', 'codigo')]);
-    D.insc = a; D.jug = b; D.rev = c; D.inc = d;
-    const cats = [...new Set(a.map((i) => i.categoria))].sort(cmp), antes = $('fCat').value;
+    if (rol === 'admin') {
+      const [a, b, c, d] = await Promise.all([
+        traerTodo('v_panel_inscripciones', 'id'), traerTodo('v_panel_jugadores', 'planilla_id'),
+        traerTodo('jugadores_a_revisar', 'jugador_id'), traerTodo('inscripciones_incompletas', 'codigo')]);
+      D.insc = a; D.jug = b; D.rev = c; D.inc = d;
+    }
+    D.par = await traerTodo('v_programacion_publica', 'id');
+    const cats = [...new Set([...D.insc, ...D.par].map((i) => i.categoria))].sort(cmp), antes = $('fCat').value;
+    const xAntes = $('xCat').value;
+    $('xCat').innerHTML = '<option value="">(la que diga el archivo)</option>' + cats.map((c) => `<option>${esc(c)}</option>`).join('');
+    if (cats.includes(xAntes)) $('xCat').value = xAntes;
     $('fCat').innerHTML = '<option value="">Todas las categorías</option>' + cats.map((c) => `<option>${esc(c)}</option>`).join('');
     if (cats.includes(antes)) $('fCat').value = antes;
     $('estado').textContent = 'Actualizado a las ' + new Date().toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit' });
@@ -214,7 +270,15 @@ function filtros() {
       .sort((x, y) => cmp(x.categoria, y.categoria) || cmp(x.equipo, y.equipo) || ((x.numero_camiseta ?? 9999) - (y.numero_camiseta ?? 9999)) || cmp(x.apellido, y.apellido)),
     rev: () => D.rev.filter((r) => okTxt([r.nombre, r.apellido, r.numero_documento, r.inscrito_en])).sort((x, y) => cmp(x.apellido, y.apellido)),
     inc: () => D.inc.filter((r) => okCat(r) && okTxt([r.equipo, r.codigo, r.delegado_nombre, r.delegado_celular]))
-      .sort((x, y) => cmp(x.categoria, y.categoria) || cmp(x.equipo, y.equipo))
+      .sort((x, y) => cmp(x.categoria, y.categoria) || cmp(x.equipo, y.equipo)),
+    par: () => {
+      const g = $('fGrupo').value, pe = $('fPEstado').value, fe = $('fFecha').value;
+      return D.par.filter((r) => okCat(r) && (!g || (r.grupo ?? '') === g) && (!fe || r.fecha === fe) &&
+        (!pe || (pe === 'jug' ? ['jugado', 'wo'].includes(r.estado) : !['jugado', 'wo'].includes(r.estado))) &&
+        okTxt([r.local, r.visitante, r.cancha, r.arbitro]))
+        .sort((x, y) => (x.fecha ?? '9999').localeCompare(y.fecha ?? '9999') || (x.hora ?? '99').localeCompare(y.hora ?? '99') ||
+          cmp(x.cancha, y.cancha) || (x.id - y.id));
+    }
   };
 }
 
@@ -223,9 +287,27 @@ const COLUMNAS = {
   insc: ['Código', 'Equipo', 'Categoría', 'Delegado', 'Celular', 'Jugadores', 'Estado', 'Inscrito', ''],
   jug: ['Foto', 'Jugador', 'Documento', 'Edad', 'Equipo', 'Camiseta', 'Documento adjunto'],
   rev: ['Jugador', 'Documento', 'Veces', 'Inscrito en', ''],
-  inc: ['Código', 'Equipo', 'Categoría', 'Jugadores', 'Delegado', 'Celular']
+  inc: ['Código', 'Equipo', 'Categoría', 'Jugadores', 'Delegado', 'Celular'],
+  par: ['Fecha', 'Hora', 'Cancha', 'Juez', 'Categoría · grupo', 'Local', 'Marcador', 'Visitante', 'Estado', '']
 };
+const ESTADOS = { programado: 'Programado', jugado: 'Jugado', aplazado: 'Aplazado', suspendido: 'Suspendido', wo: 'W.O.' };
+function filaPartido(r) {
+  const adm = rol === 'admin', hm = r.hora ? String(r.hora).slice(0, 5) : '';
+  const campo = (cls, tipo, val, extra = '') => adm ? `<input class="${cls}" data-c="${cls}" type="${tipo}" value="${esc(val)}" ${extra}>` : esc(val);
+  const sinResultado = !['jugado', 'wo'].includes(r.estado);
+  return `<tr data-pid="${r.id}">
+    <td>${campo('f', 'date', r.fecha ?? '')}</td><td>${campo('h', 'time', hm)}</td>
+    <td>${campo('t', 'text', r.cancha ?? '', 'maxlength="30"')}</td><td>${adm ? `<input class="t" data-c="a" type="text" value="${esc(r.arbitro ?? '')}" maxlength="60">` : esc(r.arbitro ?? '')}</td>
+    <td><small>${esc(r.categoria)}<br>${esc(r.fase)}${r.grupo ? ' · ' + esc(r.grupo) : ''}${r.jornada ? ' · J' + r.jornada : ''}</small></td>
+    <td class="der">${esc(r.local)}</td>
+    <td class="marcador"><input class="gol" data-c="gl" type="number" min="0" max="99" inputmode="numeric" value="${r.goles_local ?? ''}" aria-label="Goles local">
+      – <input class="gol" data-c="gv" type="number" min="0" max="99" inputmode="numeric" value="${r.goles_visitante ?? ''}" aria-label="Goles visitante"></td>
+    <td class="izq">${esc(r.visitante)}</td>
+    <td><select class="est" data-c="e" aria-label="Estado">${Object.entries(ESTADOS).map(([k, v]) => `<option value="${k}"${k === r.estado ? ' selected' : ''}>${v}</option>`).join('')}</select></td>
+    <td style="white-space:nowrap"><button type="button" class="chico primario" data-acc="gpar">Guardar</button>${adm && sinResultado ? ' <button type="button" class="chico peligro" data-acc="bpar" title="Borrar este partido">🗑</button>' : ''}</td></tr>`;
+}
 function filaHtml(t, r) {
+  if (t === 'par') return filaPartido(r);
   if (t === 'insc') return `<tr class="${r.retirado ? 'retirado' : ''}">
     <td><code>${esc(r.codigo)}</code></td><td>${esc(r.equipo)}</td><td>${esc(r.categoria)}</td>
     <td>${esc(r.delegado_nombre)}</td><td>${esc(r.delegado_celular)}</td>
@@ -249,11 +331,24 @@ function filaHtml(t, r) {
     <td>${esc(r.delegado_nombre)}</td><td>${esc(r.delegado_celular)}</td></tr>`;
 }
 function render() {
-  const nombres = { insc: 'Equipos', jug: 'Jugadores', rev: 'Por revisar', inc: 'Incompletas' };
+  const nombres = { par: 'Partidos', insc: 'Equipos', jug: 'Jugadores', rev: 'Por revisar', inc: 'Incompletas' };
+  const permitidas = rol === 'admin' ? ['par', 'insc', 'jug', 'rev', 'inc', 'fix'] : ['par'];
+  if (!permitidas.includes(tab)) tab = 'par';
   document.querySelectorAll('#tabs button').forEach((b) => {
-    b.textContent = `${nombres[b.dataset.tab]} (${D[b.dataset.tab].length})`; b.classList.toggle('activo', b.dataset.tab === tab);
+    const k = b.dataset.tab; b.hidden = !permitidas.includes(k);
+    if (k !== 'fix') b.textContent = `${nombres[k]} (${D[k].length})`;
+    b.classList.toggle('activo', k === tab);
   });
+  const fix = tab === 'fix';
+  $('vistaFix').hidden = !fix; ['barraBase', 'tabla', 'pieBase'].forEach((id) => { $(id).hidden = fix; });
+  $('barraPar').hidden = tab !== 'par'; if (fix) { $('chip').hidden = true; return; }
   $('fCat').hidden = tab === 'rev'; $('fEstado').hidden = !(tab === 'insc' || tab === 'jug');
+  if (tab === 'par') {                                   // los grupos que existen en la categoría elegida
+    const cat = $('fCat').value, previo = $('fGrupo').value;
+    const gs = [...new Set(D.par.filter((r) => !cat || r.categoria === cat).map((r) => r.grupo ?? '').filter(Boolean))].sort(cmp);
+    $('fGrupo').innerHTML = '<option value="">Todos los grupos</option>' + gs.map((g) => `<option>${esc(g)}</option>`).join('');
+    if (gs.includes(previo)) $('fGrupo').value = previo;
+  }
   const chip = $('chip'); const ins = filtroInsc && D.insc.find((i) => i.id === filtroInsc);
   chip.hidden = !(tab === 'jug' && ins);
   if (!chip.hidden) chip.innerHTML = `Equipo: <b>${esc(ins.equipo)}</b> (${esc(ins.categoria)}) <button type="button" class="chico" id="btnQuitarChip">✕</button>`;
@@ -264,7 +359,8 @@ function render() {
   $('tabla').innerHTML = total
     ? `<table><thead><tr>${COLUMNAS[tab].map((c) => `<th>${c}</th>`).join('')}</tr></thead><tbody>${visibles.map((r) => filaHtml(tab, r)).join('')}</tbody></table>`
     : `<div class="vacio">${{ insc: 'No hay equipos inscritos con esos filtros.', jug: 'No hay jugadores con esos filtros.',
-        rev: 'Ningún jugador aparece en más de un equipo o categoría.', inc: 'Todos los equipos alcanzan el mínimo de jugadores.' }[tab]}</div>`;
+        rev: 'Ningún jugador aparece en más de un equipo o categoría.', inc: 'Todos los equipos alcanzan el mínimo de jugadores.',
+        par: rol === 'admin' ? 'No hay partidos con esos filtros. Carga el fixture en la pestaña «Fixture».' : 'No hay partidos con esos filtros.' }[tab]}</div>`;
   $('pager').hidden = paginas <= 1;
   $('pagTxt').textContent = `Página ${pagina} de ${paginas} · ${total} registros`;
   $('btnAnt').disabled = pagina <= 1; $('btnSig').disabled = pagina >= paginas;
@@ -314,6 +410,8 @@ async function cambiarRetiro(id) {
 $('tabla').addEventListener('click', (e) => {
   const el = e.target.closest('[data-acc]'); if (!el) return; const acc = el.dataset.acc;
   if (acc === 'ret') cambiarRetiro(Number(el.dataset.id));
+  else if (acc === 'gpar') guardarPartido(el.closest('tr'));
+  else if (acc === 'bpar') borrarPartido(el.closest('tr'));
   else if (acc === 'xls') exportar(Number(el.dataset.id));
   else if (acc === 'ver') { filtroInsc = Number(el.dataset.id); tab = 'jug'; pagina = 1; $('fCat').value = ''; $('fEstado').value = ''; $('fTexto').value = ''; render(); }
   else if (acc === 'doc') abrirDocumento(el.dataset.ruta);
@@ -322,11 +420,12 @@ $('tabla').addEventListener('click', (e) => {
 });
 $('chip').addEventListener('click', (e) => { if (e.target.id === 'btnQuitarChip') { filtroInsc = null; pagina = 1; render(); } });
 $('tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; tab = b.dataset.tab; pagina = 1; if (tab !== 'jug') filtroInsc = null; render(); });
-['fCat', 'fEstado'].forEach((id) => $(id).addEventListener('change', () => { pagina = 1; render(); }));
+['fCat', 'fEstado', 'fGrupo', 'fPEstado', 'fFecha'].forEach((id) => $(id).addEventListener('change', () => { pagina = 1; render(); }));
 $('fTexto').addEventListener('input', () => { pagina = 1; render(); });
 $('btnAnt').addEventListener('click', () => { pagina--; render(); });
 $('btnSig').addEventListener('click', () => { pagina++; render(); });
 $('btnActualizar').addEventListener('click', cargar);
+$('btnLimpiarFecha').addEventListener('click', () => { $('fFecha').value = ''; pagina = 1; render(); });
 
 // ---------- Exportar a Excel (sin adjuntos: ni documentos ni fotos) ----------
 function cargarXLSX() {
@@ -352,6 +451,7 @@ function datosParaExportar(idEquipo) {
 }
 function limpio(t) { return String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w-]+/g, '_').replace(/^_+|_+$/g, ''); }
 async function exportar(idEquipo) {
+  if (tab === 'par') return exportarPartidos();
   const b = $('btnExcel'); b.disabled = true; b.textContent = 'Preparando…';
   try {
     await cargarXLSX();
@@ -392,6 +492,143 @@ async function exportar(idEquipo) {
   b.disabled = false; b.textContent = '⬇ Exportar Excel';
 }
 $('btnExcel').addEventListener('click', () => exportar());
+
+// ---------- Partidos: guardar resultado y programación ----------
+const marca = (v) => (v === '' || v == null ? null : Number(v));
+async function guardarPartido(tr) {
+  const r = D.par.find((x) => x.id === Number(tr.dataset.pid)); if (!r) return;
+  const q = (c) => { const e = tr.querySelector(`[data-c="${c}"]`); return e ? e.value.trim() : null; };
+  let gl = marca(q('gl')), gv = marca(q('gv')), est = q('e');
+  if (est === 'programado' && gl !== null && gv !== null) est = 'jugado';          // puso goles: es que se jugó
+  if (['jugado', 'wo'].includes(est) && (gl === null || gv === null)) { aviso('error', `${r.local} vs ${r.visitante}: escribe los goles de los dos equipos.`); return; }
+  if (!['jugado', 'wo'].includes(est)) { gl = null; gv = null; }                    // sin resultado no hay marcador
+  const btn = tr.querySelector('[data-acc="gpar"]'); btn.disabled = true; btn.textContent = '…';
+  const avisos = [];
+  try {
+    if (rol === 'admin') {
+      const f = q('f') || null, h = q('h') || null, c = q('t') || null, a = q('a') || null;
+      const antes = [r.fecha ?? null, r.hora ? String(r.hora).slice(0, 5) : null, r.cancha ?? null, r.arbitro ?? null];
+      if ([f, h, c, a].some((v, k) => v !== antes[k])) {
+        const { data, error } = await sb.rpc('admin_actualizar_partido', { p_id: r.id, p_fecha: f, p_hora: h, p_cancha: c, p_arbitro: a });
+        if (error) throw error;
+        Object.assign(r, { fecha: f, hora: h, cancha: c, arbitro: a }); avisos.push(...((data && data.avisos) || []));
+      }
+    }
+    if (gl !== (r.goles_local ?? null) || gv !== (r.goles_visitante ?? null) || est !== r.estado) {
+      const { error } = await sb.rpc('registrar_resultado', { p_id: r.id, p_goles_local: gl, p_goles_visitante: gv, p_estado: est });
+      if (error) throw error;
+      Object.assign(r, { goles_local: gl, goles_visitante: gv, estado: est });
+    }
+    tr.outerHTML = filaPartido(r);
+    const nueva = document.querySelector(`tr[data-pid="${r.id}"]`); if (nueva) nueva.classList.add('guardado');
+    aviso('ok', `Guardado: ${r.local} vs ${r.visitante}.` + (avisos.length ? ' ⚠ ' + avisos.join(' · ') : ''));
+  } catch (e) { btn.disabled = false; btn.textContent = 'Guardar'; manejarError(e); }
+}
+async function borrarPartido(tr) {
+  const r = D.par.find((x) => x.id === Number(tr.dataset.pid)); if (!r) return;
+  if (!confirm(`¿Borrar el partido ${r.local} vs ${r.visitante}?`)) return;
+  const { error } = await sb.rpc('admin_borrar_partido', { p_id: r.id });
+  if (error) { manejarError(error); return; }
+  D.par = D.par.filter((x) => x.id !== r.id); aviso('ok', 'Partido borrado.'); render();
+}
+async function exportarPartidos() {
+  const b = $('btnExcel'); b.disabled = true; b.textContent = 'Preparando…';
+  try {
+    await cargarXLSX();
+    const filas = filtros().par().map((r) => ({
+      'Categoría': r.categoria, 'Fase': r.fase, 'Grupo': r.grupo ?? '', 'Jornada': r.jornada ?? '', 'Fecha': r.fecha ?? '', 'Hora': r.hora ? String(r.hora).slice(0, 5) : '',
+      'Cancha': r.cancha ?? '', 'Juez': r.arbitro ?? '', 'Local': r.local, 'Goles local': r.goles_local ?? '', 'Goles visitante': r.goles_visitante ?? '',
+      'Visitante': r.visitante, 'Estado': ESTADOS[r.estado] || r.estado }));
+    if (!filas.length) throw new Error('No hay partidos con esos filtros para exportar.');
+    const ws = XLSX.utils.json_to_sheet(filas); ws['!cols'] = anchos(filas); ws['!autofilter'] = { ref: ws['!ref'] };
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Partidos');
+    XLSX.writeFile(wb, `AMC_partidos_${new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })}.xlsx`);
+    aviso('ok', `Excel generado: ${filas.length} partidos (lo filtrado en pantalla).`);
+  } catch (e) { aviso('error', e.message || 'No se pudo generar el Excel'); }
+  b.disabled = false; b.textContent = '⬇ Exportar Excel';
+}
+
+// ---------- Fixture: leer el archivo, revisar y importar ----------
+const X = { filas: null, columnas: [] };
+const cab = (t) => norm(t).replace(/[^a-z]/g, '');
+function fechaISO(v) {
+  if (typeof v === 'number') return v >= 1 ? new Date(Math.round((v - 25569) * 864e5)).toISOString().slice(0, 10) : '';
+  const t = String(v ?? '').trim(); let m;
+  if ((m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+  if ((m = t.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/))) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;   // día/mes/año
+  return t;
+}
+function horaHM(v) {
+  if (typeof v === 'number') { const mins = Math.round((v % 1) * 1440) % 1440; return String(Math.floor(mins / 60)).padStart(2, '0') + ':' + String(mins % 60).padStart(2, '0'); }
+  const t = String(v ?? '').trim(); const m = t.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([ap])?\.?\s*m?\.?$/i);
+  if (!m) return t;
+  let h = Number(m[1]); if (m[3]) { h = h % 12 + (m[3].toLowerCase() === 'p' ? 12 : 0); }
+  return String(h).padStart(2, '0') + ':' + m[2];
+}
+function leerFixture(filasCrudas) {
+  const mapa = { jornada: 'jornada', local: 'local', visitante: 'visitante', fecha: 'fecha', hora: 'hora', cancha: 'cancha', juez: 'arbitro', arbitro: 'arbitro',
+    categoria: 'categoria', fase: 'fase', grupo: 'grupo', observaciones: 'observaciones' };
+  const reconocidas = new Set(), partidos = [];
+  filasCrudas.forEach((fila, i) => {
+    const o = {};
+    for (const [k, v] of Object.entries(fila)) { const c = mapa[cab(k)]; if (c) { o[c] = v; reconocidas.add(k); } }
+    const l = String(o.local ?? '').trim(), v = String(o.visitante ?? '').trim();
+    if (!l && !v) return;                                                     // fila vacía o de descanso
+    if (/^(descansa|libre|bye|-+)$/i.test(l) || /^(descansa|libre|bye|-+)$/i.test(v)) return;
+    partidos.push({
+      fila: i + 2,                                                            // número de fila como se ve en Excel (la 1 son los títulos)
+      categoria: String(o.categoria ?? '').trim() || $('xCat').value, fase: String(o.fase ?? '').trim() || $('xFase').value.trim(),
+      grupo: String(o.grupo ?? '').trim() || $('xGrupo').value.trim(), jornada: String(o.jornada ?? '').trim(),
+      fecha: fechaISO(o.fecha), hora: horaHM(o.hora), cancha: String(o.cancha ?? '').trim(), arbitro: String(o.arbitro ?? '').trim(),
+      local: l, visitante: v, observaciones: String(o.observaciones ?? '').trim() });
+  });
+  return { partidos, reconocidas: [...reconocidas] };
+}
+async function leerArchivo() {
+  const f = $('xArchivo').files[0]; X.filas = null; $('btnXImportar').disabled = true;
+  if (!f) { $('xVista').innerHTML = ''; return; }
+  try {
+    await cargarXLSX();
+    const esTexto = /\.(csv|txt)$/i.test(f.name);
+    const wb = esTexto ? XLSX.read(await f.text(), { type: 'string', raw: true }) : XLSX.read(await f.arrayBuffer(), { type: 'array' });
+    const hoja = wb.Sheets[wb.SheetNames[0]];
+    const crudas = XLSX.utils.sheet_to_json(hoja, { defval: '', raw: true, blankrows: true });
+    X.filas = crudas;
+    $('xVista').innerHTML = `<p class="nota">Archivo leído: <b>${esc(f.name)}</b> · ${crudas.length} filas. Pulsa «Revisar archivo».</p>`;
+  } catch (e) { $('xVista').innerHTML = `<div class="aviso error">No se pudo leer el archivo: ${esc(e.message || e)}</div>`; }
+}
+async function enviarFixture(soloValidar) {
+  if (!X.filas) { aviso('error', 'Primero elige el archivo.'); return; }
+  const { partidos, reconocidas } = leerFixture(X.filas);
+  if (!partidos.length) { $('xVista').innerHTML = '<div class="aviso error">No encontré partidos. Revisa que el archivo tenga las columnas Local y Visitante.</div>'; return; }
+  if (partidos.some((p) => !p.categoria)) { $('xVista').innerHTML = '<div class="aviso error">Elige la categoría (arriba), o agrega una columna «Categoría» al archivo.</div>'; return; }
+  const bv = $('btnXValidar'), bi = $('btnXImportar'); bv.disabled = true; bi.disabled = true;
+  (soloValidar ? bv : bi).textContent = 'Procesando…';
+  try {
+    const { data, error } = await sb.rpc('admin_importar_fixture', { p_partidos: partidos, p_reemplazar: $('xReemplazar').checked, p_solo_validar: soloValidar });
+    if (error) throw error;
+    const err = data.errores || [], av = data.avisos || [];
+    const li = (a) => a.slice(0, 200).map((e) => `<li>${e.fila ? 'Fila ' + e.fila + ': ' : ''}${esc(e.mensaje)}</li>`).join('') + (a.length > 200 ? `<li>… y ${a.length - 200} más</li>` : '');
+    const resumen = (data.resumen || []).map((r) => `<tr><td>${esc(r.categoria)}</td><td>${esc(r.fase)}</td><td>${esc(r.grupo ?? '—')}</td><td>${r.partidos}</td></tr>`).join('');
+    $('xVista').innerHTML =
+      `<p class="nota">Columnas reconocidas: <b>${reconocidas.map(esc).join(', ') || 'ninguna'}</b> · ${partidos.length} partidos leídos.</p>` +
+      (resumen ? `<div class="tabla-wrap" style="margin:8px 0"><table><thead><tr><th>Categoría</th><th>Fase</th><th>Grupo</th><th>Partidos</th></tr></thead><tbody>${resumen}</tbody></table></div>` : '') +
+      (err.length ? `<div class="aviso error"><b>${err.length} error(es): corrígelos en el archivo y vuelve a subirlo.</b><ul class="lista err">${li(err)}</ul></div>` : '') +
+      (av.length ? `<div class="aviso"><b>${av.length} aviso(s)</b> (no impiden importar):<ul class="lista amb">${li(av)}</ul></div>` : '') +
+      (soloValidar && !err.length ? '<div class="aviso ok">Todo en orden. Pulsa «2. Importar» para guardarlo.</div>' : '') +
+      (!soloValidar && data.ok ? `<div class="aviso ok"><b>Importados ${data.insertados} partidos.</b> Ve a la pestaña Partidos para ponerles fecha, cancha y juez.</div>` : '');
+    if (soloValidar) bi.disabled = err.length > 0; else { X.filas = null; $('xArchivo').value = ''; await cargar(); }
+  } catch (e) { manejarError(e); }
+  bv.disabled = false; bv.textContent = '1. Revisar archivo'; bi.textContent = '2. Importar';
+}
+$('xArchivo').addEventListener('change', leerArchivo);
+['xCat', 'xFase', 'xGrupo', 'xReemplazar'].forEach((id) => $(id).addEventListener('change', () => { $('btnXImportar').disabled = true; }));
+$('btnXValidar').addEventListener('click', () => enviarFixture(true));
+$('btnXImportar').addEventListener('click', () => { if (confirm('¿Importar estos partidos?')) enviarFixture(false); });
+$('btnXPlantilla').addEventListener('click', () => {
+  const csv = '﻿Categoria,Fase,Grupo,Jornada,Fecha,Hora,Cancha,Juez,Local,Visitante\n2009,GRUPOS,A,1,2026-12-05,08:00,Cancha 1,Juez 1,EQUIPO UNO,EQUIPO DOS\n';
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = 'plantilla_fixture_AMC.csv'; a.click();
+});
 
 // ---------- Arranque ----------
 (async () => {
