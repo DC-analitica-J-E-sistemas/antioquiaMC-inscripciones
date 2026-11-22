@@ -303,6 +303,7 @@ function validar(js) {
     const k = d.tipo_documento + '-' + d.numero_documento;
     if (docs.has(k)) return `Jugador ${n}: el documento está repetido en este formulario.`; docs.add(k);
     if (d.numero_camiseta === null) return `Jugador ${n}: escribe el número de camiseta.`;
+    if (!Number.isInteger(d.numero_camiseta) || d.numero_camiseta < 0 || d.numero_camiseta > 999) return `Jugador ${n}: la camiseta debe ser un número entre 0 y 999.`;
     if (cams.has(d.numero_camiseta)) return `Jugador ${n}: la camiseta ${d.numero_camiseta} está repetida.`; cams.add(d.numero_camiseta);   
     const ed = calcularEdad(d.fecha_nacimiento); if (ed === '' || ed < 4 || ed > 90) return `Jugador ${n}: revisa la fecha de nacimiento.`;
     if (!d.archivo && !d.el._ruta) return `Jugador ${n}: adjunta la foto o PDF del documento.`;
