@@ -213,7 +213,11 @@ $('formLogin').addEventListener('submit', async (e) => {
   e.preventDefault(); const b = $('btnEntrar'); b.disabled = true; b.textContent = 'Entrando…';
   const { data, error } = await sb.auth.signInWithPassword({ email: $('email').value.trim(), password: $('clave').value });
   b.disabled = false; b.textContent = 'Entrar';
-  if (error) { aviso('error', 'Correo o contraseña incorrectos.'); return; }
+  if (error) {
+    const clave = error.code === 'invalid_credentials' || /invalid login/i.test(error.message || '');
+    aviso('error', clave ? 'Correo o contraseña incorrectos.' : 'No se pudo iniciar sesión (' + (error.message || 'error de conexión') + '). Si dice "Invalid API key", revisa la SUPABASE_KEY del archivo.');
+    return;
+  }
   await entrar(data.user);
 });
 $('btnSalir').addEventListener('click', async () => { await sb.auth.signOut(); verLogin(); });
@@ -551,11 +555,14 @@ async function exportarPartidos() {
 // ---------- Fixture: leer el archivo, revisar y importar ----------
 const X = { filas: null, columnas: [] };
 const cab = (t) => norm(t).replace(/[^a-z]/g, '');
-function fechaISO(v) {
+const MESES = { enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6, julio: 7, agosto: 8, septiembre: 9, setiembre: 9, octubre: 10, noviembre: 11, diciembre: 12 };
+function fechaISO(v, anio) {
   if (typeof v === 'number') return v >= 1 ? new Date(Math.round((v - 25569) * 864e5)).toISOString().slice(0, 10) : '';
   const t = String(v ?? '').trim(); let m;
   if ((m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
   if ((m = t.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/))) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;   // día/mes/año
+  if ((m = norm(t).match(/^(?:[a-z]+,?\s+)?(\d{1,2})\s*(?:de\s+)?([a-z]+)(?:\s*(?:de\s+)?(\d{4}))?$/)) && MESES[m[2]])   // "15 noviembre", "15 de noviembre de 2026"
+    return `${m[3] || anio || new Date().getFullYear()}-${String(MESES[m[2]]).padStart(2, '0')}-${m[1].padStart(2, '0')}`;
   return t;
 }
 function horaHM(v) {
@@ -567,22 +574,30 @@ function horaHM(v) {
 }
 function leerFixture(filasCrudas) {
   const mapa = { jornada: 'jornada', local: 'local', visitante: 'visitante', fecha: 'fecha', hora: 'hora', cancha: 'cancha', juez: 'arbitro', arbitro: 'arbitro',
-    categoria: 'categoria', fase: 'fase', grupo: 'grupo', observaciones: 'observaciones' };
+    categoria: 'categoria', fase: 'fase', grupo: 'grupo', observaciones: 'observaciones', fechadepartido: 'fecha', ano: 'ano', anio: 'ano' };
+  // El generador escribe los equipos como "2009 - NOMBRE": se quita el prefijo y se aprovecha como categoría.
+  const cats = [...$('xCat').options].map((o) => o.value).filter(Boolean).sort((a, b) => b.length - a.length);
+  const sinPrefijo = (t) => {
+    for (const c of cats) { const m = t.match(new RegExp('^\\s*' + c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*[-–—]\\s*(.+)$', 'i')); if (m) return { nombre: m[1].trim(), cat: c }; }
+    return { nombre: t, cat: '' };
+  };
+  const ignoradas = new Set();
   const reconocidas = new Set(), partidos = [];
   filasCrudas.forEach((fila, i) => {
     const o = {};
-    for (const [k, v] of Object.entries(fila)) { const c = mapa[cab(k)]; if (c) { o[c] = v; reconocidas.add(k); } }
-    const l = String(o.local ?? '').trim(), v = String(o.visitante ?? '').trim();
+    for (const [k, v] of Object.entries(fila)) { const c = mapa[cab(k)]; if (c) { o[c] = v; reconocidas.add(k); } else ignoradas.add(k); }
+    const pl = sinPrefijo(String(o.local ?? '').trim()), pv = sinPrefijo(String(o.visitante ?? '').trim());
+    const l = pl.nombre, v = pv.nombre;
     if (!l && !v) return;                                                     // fila vacía o de descanso
     if (/^(descansa|libre|bye|-+)$/i.test(l) || /^(descansa|libre|bye|-+)$/i.test(v)) return;
     partidos.push({
       fila: i + 2,                                                            // número de fila como se ve en Excel (la 1 son los títulos)
-      categoria: String(o.categoria ?? '').trim() || $('xCat').value, fase: String(o.fase ?? '').trim() || $('xFase').value.trim(),
+      categoria: String(o.categoria ?? '').trim() || pl.cat || pv.cat || $('xCat').value, fase: String(o.fase ?? '').trim() || $('xFase').value.trim(),
       grupo: String(o.grupo ?? '').trim() || $('xGrupo').value.trim(), jornada: String(o.jornada ?? '').trim(),
-      fecha: fechaISO(o.fecha), hora: horaHM(o.hora), cancha: String(o.cancha ?? '').trim(), arbitro: String(o.arbitro ?? '').trim(),
+      fecha: fechaISO(o.fecha, String(o.ano ?? '').trim()), hora: horaHM(o.hora), cancha: String(o.cancha ?? '').trim(), arbitro: String(o.arbitro ?? '').trim(),
       local: l, visitante: v, observaciones: String(o.observaciones ?? '').trim() });
   });
-  return { partidos, reconocidas: [...reconocidas] };
+  return { partidos, reconocidas: [...reconocidas], ignoradas: [...ignoradas] };
 }
 async function leerArchivo() {
   const f = $('xArchivo').files[0]; X.filas = null; $('btnXImportar').disabled = true;
@@ -599,7 +614,7 @@ async function leerArchivo() {
 }
 async function enviarFixture(soloValidar) {
   if (!X.filas) { aviso('error', 'Primero elige el archivo.'); return; }
-  const { partidos, reconocidas } = leerFixture(X.filas);
+  const { partidos, reconocidas, ignoradas } = leerFixture(X.filas);
   if (!partidos.length) { $('xVista').innerHTML = '<div class="aviso error">No encontré partidos. Revisa que el archivo tenga las columnas Local y Visitante.</div>'; return; }
   if (partidos.some((p) => !p.categoria)) { $('xVista').innerHTML = '<div class="aviso error">Elige la categoría (arriba), o agrega una columna «Categoría» al archivo.</div>'; return; }
   const bv = $('btnXValidar'), bi = $('btnXImportar'); bv.disabled = true; bi.disabled = true;
@@ -611,7 +626,7 @@ async function enviarFixture(soloValidar) {
     const li = (a) => a.slice(0, 200).map((e) => `<li>${e.fila ? 'Fila ' + e.fila + ': ' : ''}${esc(e.mensaje)}</li>`).join('') + (a.length > 200 ? `<li>… y ${a.length - 200} más</li>` : '');
     const resumen = (data.resumen || []).map((r) => `<tr><td>${esc(r.categoria)}</td><td>${esc(r.fase)}</td><td>${esc(r.grupo ?? '—')}</td><td>${r.partidos}</td></tr>`).join('');
     $('xVista').innerHTML =
-      `<p class="nota">Columnas reconocidas: <b>${reconocidas.map(esc).join(', ') || 'ninguna'}</b> · ${partidos.length} partidos leídos.</p>` +
+      `<p class="nota">Columnas reconocidas: <b>${reconocidas.map(esc).join(', ') || 'ninguna'}</b> · ${partidos.length} partidos leídos.${ignoradas.length ? ' Ignoradas: ' + ignoradas.map(esc).join(', ') + '.' : ''}</p>` +
       (resumen ? `<div class="tabla-wrap" style="margin:8px 0"><table><thead><tr><th>Categoría</th><th>Fase</th><th>Grupo</th><th>Partidos</th></tr></thead><tbody>${resumen}</tbody></table></div>` : '') +
       (err.length ? `<div class="aviso error"><b>${err.length} error(es): corrígelos en el archivo y vuelve a subirlo.</b><ul class="lista err">${li(err)}</ul></div>` : '') +
       (av.length ? `<div class="aviso"><b>${av.length} aviso(s)</b> (no impiden importar):<ul class="lista amb">${li(av)}</ul></div>` : '') +
