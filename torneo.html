@@ -110,7 +110,7 @@ async function cargar() {
   try {
     const [par, pos] = await Promise.all([leer('v_programacion_publica', 'id'), leer('v_tabla_posiciones', 'categoria,fase,grupo,posicion')]);
     D.par = par; D.pos = pos; llenarFiltros(); render();
-    $('pie').textContent = 'Actualizado a las ' + new Date().toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit' }) + ' · se actualiza solo cada minuto';
+    $('pie').textContent = 'Actualizado a las ' + new Date().toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit' });
   } catch (e) {
     $('pie').textContent = ''; if (!D.par.length) $('contenido').innerHTML = '<div class="vacio">No se pudo cargar la información. Revisa tu conexión e intenta de nuevo.</div>';
   }
