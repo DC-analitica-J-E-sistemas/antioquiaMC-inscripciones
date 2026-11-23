@@ -19,6 +19,8 @@
   header img { height: 60px; width: auto; }
   header h1 { color: #fff; font-size: 1.1rem; margin: 0; font-weight: 700; }
   header p { color: #b8c2bc; margin: 2px 0 0; font-size: .85rem; }
+  header .logo-dc-top { margin-left: auto; height: 56px; width: auto; }
+  @media (max-width: 480px) { header .logo-dc-top { height: 44px; } }
   main { max-width: 900px; margin: 0 auto; padding: 14px 14px 60px; }
   .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
   .tabs button { flex: 1; font: inherit; font-weight: 600; cursor: pointer; padding: 10px 8px; border-radius: 999px; border: 1px solid var(--linea); background: var(--card); color: var(--texto); }
@@ -57,6 +59,7 @@
 <header>
   <img src="img/torneo.png" alt="Antioquia Metropolitan Cup" onerror="this.style.display='none'">
   <div><h1>Antioquia Metropolitan Cup</h1><p>Programación, resultados y posiciones</p></div>
+  <img class="logo-dc-top" src="img/dc-logo-oscuro.png" alt="DC analítica J&amp;E sistemas" onerror="this.style.display='none'">
 </header>
 <main>
   <div class="tabs" id="tabs">
@@ -73,7 +76,7 @@
   <div id="contenido"><div class="vacio">Cargando…</div></div>
   <p class="pie" id="pie"></p>
 </main>
-<footer>Diseña: DC analítica J&amp;E sistemas</footer>
+<footer>Organiza: DC analítica J&amp;E sistemas</footer>
 
 <script>
 // =====================================================================
@@ -107,7 +110,7 @@ async function cargar() {
   try {
     const [par, pos] = await Promise.all([leer('v_programacion_publica', 'id'), leer('v_tabla_posiciones', 'categoria,fase,grupo,posicion')]);
     D.par = par; D.pos = pos; llenarFiltros(); render();
-    $('pie').textContent = 'Actualizado a las ' + new Date().toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit' });
+    $('pie').textContent = 'Actualizado a las ' + new Date().toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit' }) + ' · se actualiza solo cada minuto';
   } catch (e) {
     $('pie').textContent = ''; if (!D.par.length) $('contenido').innerHTML = '<div class="vacio">No se pudo cargar la información. Revisa tu conexión e intenta de nuevo.</div>';
   }

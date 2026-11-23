@@ -73,6 +73,7 @@
   .nota { color: var(--gris); font-size: .88rem; margin: 4px 0 8px; }
   .lista { margin: 6px 0; padding-left: 18px; font-size: .88rem; } .lista.err { color: var(--rojo); } .lista.amb { color: var(--ambar); }
   .acciones { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .logo-dc { display: block; height: 96px; width: auto; margin: 0 auto 6px; }
   footer { text-align: center; padding: 20px 16px 36px; color: var(--gris); font-size: .85rem; }
 </style>
 </head>
@@ -165,7 +166,7 @@
     </div>
   </section>
 </main>
-<footer>Diseña: DC analítica J&amp;E sistemas</footer>
+<footer><picture><source media="(prefers-color-scheme: dark)" srcset="img/dc-logo-oscuro.png"><img class="logo-dc" src="img/dc-logo.png" alt="DC analítica J&amp;E sistemas" onerror="this.style.display='none'"></picture><br>Diseña: DC analítica J&amp;E sistemas</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.js"></script>
 <script>
