@@ -59,6 +59,18 @@
   .aviso.ok { border-color: var(--acento); }
   .chip { display: inline-flex; gap: 8px; align-items: center; padding: 4px 6px 4px 12px; border: 1px solid var(--acento); border-radius: 999px; font-size: .85rem; margin-bottom: 10px; }
   .vacio { padding: 28px; text-align: center; color: var(--gris); }
+  dialog { border: 1px solid var(--linea); border-radius: 14px; background: var(--card); color: var(--texto); padding: 0; width: min(560px, 94vw); max-height: 92vh; overflow: auto; }
+  dialog::backdrop { background: rgba(0,0,0,.6); }
+  .dlg { padding: 18px; }
+  .dlg h2 { margin: 0 0 2px; font-size: 1.05rem; }
+  .dlg .sub { color: var(--gris); font-size: .85rem; margin: 0 0 8px; }
+  .dlg .fila2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+  .dlg .archivo { display: flex; gap: 12px; align-items: flex-start; margin-top: 6px; }
+  .dlg .archivo img { width: 60px; height: 80px; object-fit: cover; border-radius: 6px; border: 1px solid var(--linea); background: var(--fondo); }
+  .dlg .archivo .campo { flex: 1; }
+  .dlg .pie-dlg { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+  .dlg .nota { color: var(--gris); font-size: .8rem; margin: 4px 0 0; }
+  @media (max-width: 480px) { .dlg .fila2 { grid-template-columns: 1fr; } }
   [hidden] { display: none !important; }
   td input.gol { width: 54px; text-align: center; padding: 6px 4px; }
   td input.f, td input.h, td input.t { padding: 5px 6px; font-size: .85rem; }
@@ -166,6 +178,28 @@
     </div>
   </section>
 </main>
+<dialog id="dlgJug">
+  <form class="dlg" id="formJug" autocomplete="off">
+    <h2>Editar jugador</h2>
+    <p class="sub" id="ejSub"></p>
+    <div id="ejAviso"></div>
+    <div class="fila2">
+      <div><label for="ejNombre">Nombre</label><input id="ejNombre" maxlength="80" required></div>
+      <div><label for="ejApellido">Apellido</label><input id="ejApellido" maxlength="80" required></div>
+      <div><label for="ejTipo">Tipo de documento</label><select id="ejTipo"></select></div>
+      <div><label for="ejDoc">Número de documento</label><input id="ejDoc" maxlength="20" inputmode="text" required></div>
+      <div><label for="ejFecha">Fecha de nacimiento</label><input id="ejFecha" type="date" required></div>
+      <div><label for="ejCamiseta">Camiseta</label><input id="ejCamiseta" type="number" min="0" max="999" required></div>
+    </div>
+    <label>Foto del jugador</label>
+    <div class="archivo"><img id="ejFotoImg" alt="Foto actual">
+      <div class="campo"><input id="ejFoto" type="file" accept="image/jpeg,image/png"><p class="nota" id="ejFotoInfo">Déjalo vacío para conservar la foto actual. Si eliges una nueva se reduce a 800 px y reemplaza a la anterior.</p></div></div>
+    <label>Documento de identidad</label>
+    <div class="archivo"><div class="campo"><button type="button" class="chico" id="ejVerDoc">Ver documento actual</button>
+      <input id="ejDocArchivo" type="file" accept="image/jpeg,image/png,application/pdf" style="margin-top:8px"><p class="nota" id="ejDocInfo">Déjalo vacío para conservar el actual (JPG, PNG o PDF, máx. 10 MB).</p></div></div>
+    <div class="pie-dlg"><button type="button" id="ejCancelar">Cancelar</button><button type="submit" class="primario" id="ejGuardar">Guardar cambios</button></div>
+  </form>
+</dialog>
 <footer><picture><source media="(prefers-color-scheme: dark)" srcset="img/dc-logo-oscuro.png"><img class="logo-dc" src="img/dc-logo.png" alt="DC analítica J&amp;E sistemas" onerror="this.style.display='none'"></picture><br>Diseña: DC analítica J&amp;E sistemas</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.js"></script>
@@ -290,7 +324,7 @@ function filtros() {
 // ---------- Pintar ----------
 const COLUMNAS = {
   insc: ['Código', 'Equipo', 'Categoría', 'Delegado', 'Celular', 'Jugadores', 'Estado', 'Inscrito', ''],
-  jug: ['Foto', 'Jugador', 'Documento', 'Edad', 'Equipo', 'Camiseta', 'Documento adjunto'],
+  jug: ['Foto', 'Jugador', 'Documento', 'Edad', 'Equipo', 'Camiseta', 'Documento adjunto', ''],
   rev: ['Jugador', 'Documento', 'Veces', 'Inscrito en', ''],
   inc: ['Código', 'Equipo', 'Categoría', 'Jugadores', 'Delegado', 'Celular'],
   par: ['Fecha', 'Hora', 'Cancha', 'Juez', 'Categoría · grupo', 'Local', 'Marcador', 'Visitante', 'Estado', '']
@@ -327,7 +361,8 @@ function filaHtml(t, r) {
     <td><b>${esc(r.apellido)}</b> ${esc(r.nombre)}</td><td>${esc(r.tipo_documento)} ${esc(r.numero_documento)}</td><td>${r.edad ?? ''}</td>
     <td>${esc(r.equipo)}<br><small>${esc(r.categoria)}${r.retirado ? ' · retirado' : ''}</small></td>
     <td>${r.numero_camiseta ?? '—'}</td>
-    <td><button type="button" class="chico" data-acc="doc" data-ruta="${esc(r.documento_path)}">Ver documento</button></td></tr>`;
+    <td><button type="button" class="chico" data-acc="doc" data-ruta="${esc(r.documento_path)}">Ver documento</button></td>
+    <td><button type="button" class="chico" data-acc="edj" data-id="${r.planilla_id}">✎ Editar</button></td></tr>`;
   if (t === 'rev') return `<tr><td><b>${esc(r.apellido)}</b> ${esc(r.nombre)}</td><td>${esc(r.tipo_documento)} ${esc(r.numero_documento)}</td>
     <td>${r.veces_inscrito}</td><td>${esc(r.inscrito_en)}</td>
     <td><button type="button" class="chico" data-acc="buscar" data-doc="${esc(r.numero_documento)}">Ver sus inscripciones</button></td></tr>`;
@@ -420,6 +455,7 @@ $('tabla').addEventListener('click', (e) => {
   else if (acc === 'xls') exportar(Number(el.dataset.id));
   else if (acc === 'ver') { filtroInsc = Number(el.dataset.id); tab = 'jug'; pagina = 1; $('fCat').value = ''; $('fEstado').value = ''; $('fTexto').value = ''; render(); }
   else if (acc === 'doc') abrirDocumento(el.dataset.ruta);
+  else if (acc === 'edj') abrirEdicion(Number(el.dataset.id));
   else if (acc === 'foto') { const u = urls['fotos/' + el.dataset.ruta]; if (u) window.open(u.url, '_blank', 'noopener'); }
   else if (acc === 'buscar') { tab = 'jug'; filtroInsc = null; pagina = 1; $('fEstado').value = ''; $('fCat').value = ''; $('fTexto').value = el.dataset.doc; render(); }
 });
@@ -644,6 +680,110 @@ $('btnXImportar').addEventListener('click', () => { if (confirm('¿Importar esto
 $('btnXPlantilla').addEventListener('click', () => {
   const csv = '﻿Categoria,Fase,Grupo,Jornada,Fecha,Hora,Cancha,Juez,Local,Visitante\n2009,GRUPOS,A,1,2026-12-05,08:00,Cancha 1,Juez 1,EQUIPO UNO,EQUIPO DOS\n';
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = 'plantilla_fixture_AMC.csv'; a.click();
+});
+
+// ---------- Editar un jugador (datos, documento y foto) ----------
+const TIPOS_DOC = [['RC', 'Registro civil'], ['TI', 'Tarjeta de identidad'], ['CC', 'Cédula de ciudadanía'], ['CE', 'Cédula de extranjería'], ['PA', 'Pasaporte']];
+const FOTO_LADO = 800, FOTO_MIN = 300, FOTO_MAX_MB = 15, DOC_MAX_MB = 10;
+let editando = null;                                   // fila de v_panel_jugadores que se está editando
+$('ejTipo').innerHTML = TIPOS_DOC.map(([v, t]) => `<option value="${v}">${t}</option>`).join('');
+
+async function reducirFoto(file) {                     // misma regla del formulario público: JPG derecho, máx. 800 px
+  const bmp = await createImageBitmap(file);
+  if (Math.min(bmp.width, bmp.height) < FOTO_MIN) throw new Error('La foto es muy pequeña (mínimo ' + FOTO_MIN + ' px de lado).');
+  const k = Math.min(1, FOTO_LADO / Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+  const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(bmp, 0, 0, c.width, c.height);
+  const blob = await new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.85));
+  if (!blob) throw new Error('No se pudo procesar la foto.');
+  return new File([blob], 'foto.jpg', { type: 'image/jpeg' });
+}
+async function reducirImagenDoc(file) {                // fotos de documento pesadas se reducen; los PDF pasan igual
+  if (!file.type.startsWith('image/') || file.size < 1.5 * 1048576) return file;
+  try {
+    const bmp = await createImageBitmap(file), k = Math.min(1, 1800 / Math.max(bmp.width, bmp.height));
+    const c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    const blob = await new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.85));
+    return blob && blob.size < file.size ? new File([blob], 'doc.jpg', { type: 'image/jpeg' }) : file;
+  } catch (e) { return file; }
+}
+const ejError = (t) => { $('ejAviso').innerHTML = t ? `<div class="aviso error">${esc(t)}</div>` : ''; };
+
+async function abrirEdicion(planillaId) {
+  const r = D.jug.find((x) => x.planilla_id === planillaId); if (!r) return;
+  editando = r; ejError('');
+  const otras = D.jug.filter((x) => x.jugador_id === r.jugador_id && x.planilla_id !== r.planilla_id);
+  $('ejSub').textContent = `${r.equipo} · ${r.categoria}`;
+  if (otras.length) $('ejAviso').innerHTML = `<div class="aviso">Este jugador también está inscrito en: ${otras.map((o) => esc(o.equipo + ' (' + o.categoria + ')')).join(', ')}. Nombre, documento y fecha de nacimiento se cambian en todas sus inscripciones; la camiseta, la foto y el documento adjunto, solo en esta.</div>`;
+  $('ejNombre').value = r.nombre ?? ''; $('ejApellido').value = r.apellido ?? '';
+  $('ejTipo').value = r.tipo_documento ?? 'TI'; $('ejDoc').value = r.numero_documento ?? '';
+  $('ejFecha').value = r.fecha_nacimiento ?? ''; $('ejCamiseta').value = r.numero_camiseta ?? '';
+  $('ejFoto').value = ''; $('ejDocArchivo').value = '';
+  $('ejFotoInfo').textContent = 'Déjalo vacío para conservar la foto actual. Si eliges una nueva se reduce a 800 px y reemplaza a la anterior.';
+  $('ejDocInfo').textContent = `Déjalo vacío para conservar el actual (JPG, PNG o PDF, máx. ${DOC_MAX_MB} MB).`;
+  $('ejFotoImg').removeAttribute('src'); $('ejVerDoc').hidden = !r.documento_path;
+  $('ejGuardar').disabled = false; $('ejGuardar').textContent = 'Guardar cambios';
+  $('dlgJug').showModal();
+  if (r.foto_path) { try { const [u] = await enlace('fotos', [r.foto_path], SEG_FOTO); if (u && editando === r) $('ejFotoImg').src = u; } catch (e) { /* sin vista previa */ } }
+}
+$('ejCancelar').addEventListener('click', () => $('dlgJug').close());
+$('dlgJug').addEventListener('click', (e) => { if (e.target === $('dlgJug')) $('dlgJug').close(); });   // clic fuera = cancelar
+$('ejVerDoc').addEventListener('click', () => { if (editando && editando.documento_path) abrirDocumento(editando.documento_path); });
+$('ejFoto').addEventListener('change', async (e) => {
+  const f = e.target.files[0]; if (!f) return; const info = $('ejFotoInfo');
+  if (!/^image\/(jpeg|png)$/.test(f.type)) { info.textContent = '✘ La foto debe ser JPG o PNG.'; e.target.value = ''; return; }
+  if (f.size > FOTO_MAX_MB * 1048576) { info.textContent = `✘ La foto pesa más de ${FOTO_MAX_MB} MB.`; e.target.value = ''; return; }
+  try { const red = await reducirFoto(f); e._red = red; $('ejFotoImg').src = URL.createObjectURL(red); info.textContent = `✔ Foto nueva lista (${Math.round(red.size / 1024)} KB). Se aplica al guardar.`; $('ejFoto')._red = red; }
+  catch (err) { info.textContent = '✘ ' + (err.message || 'No se pudo leer la foto.'); e.target.value = ''; $('ejFoto')._red = null; }
+});
+$('ejDocArchivo').addEventListener('change', (e) => {
+  const f = e.target.files[0]; if (!f) return; const info = $('ejDocInfo');
+  if (!/^(image\/(jpeg|png)|application\/pdf)$/.test(f.type)) { info.textContent = '✘ El documento debe ser JPG, PNG o PDF.'; e.target.value = ''; return; }
+  if (f.size > DOC_MAX_MB * 1048576) { info.textContent = `✘ El archivo pesa más de ${DOC_MAX_MB} MB.`; e.target.value = ''; return; }
+  info.textContent = `✔ ${f.name} listo. Se aplica al guardar.`;
+});
+async function subirAdmin(bucket, file, ext) {
+  const ruta = `${crypto.randomUUID()}/${bucket === 'fotos' ? 'foto' : 'doc'}.${ext}`;
+  const { error } = await sb.storage.from(bucket).upload(ruta, file, { contentType: file.type, upsert: false });
+  if (error) throw new Error('No se pudo subir el archivo: ' + error.message);
+  return ruta;
+}
+$('formJug').addEventListener('submit', async (e) => {
+  e.preventDefault(); const r = editando; if (!r) return;
+  const d = { nombre: $('ejNombre').value.trim(), apellido: $('ejApellido').value.trim(), tipo: $('ejTipo').value, doc: $('ejDoc').value.trim(),
+    fecha: $('ejFecha').value, cam: $('ejCamiseta').value === '' ? null : Number($('ejCamiseta').value) };
+  if (!d.nombre || !d.apellido || !d.doc || !d.fecha) return ejError('Faltan datos obligatorios.');
+  if (d.tipo !== 'PA' && !/^\d{5,12}$/.test(d.doc)) return ejError('El número de documento debe tener solo números (entre 5 y 12).');
+  if (d.cam === null || !Number.isInteger(d.cam) || d.cam < 0 || d.cam > 999) return ejError('La camiseta debe ser un número entre 0 y 999.');
+  const hoy = new Date().toISOString().slice(0, 10);
+  if (d.fecha > hoy) return ejError('Revisa la fecha de nacimiento.');
+  const otraCamiseta = D.jug.find((x) => x.inscripcion_id === r.inscripcion_id && x.planilla_id !== r.planilla_id && x.numero_camiseta === d.cam);
+  if (otraCamiseta) return ejError(`La camiseta ${d.cam} ya la tiene ${otraCamiseta.nombre} ${otraCamiseta.apellido}.`);
+  ejError(''); const btn = $('ejGuardar'); btn.disabled = true; btn.textContent = 'Guardando…';
+  const subidos = [];                                   // para deshacer la subida si algo falla
+  try {
+    let rutaFoto = null, rutaDoc = null;
+    const fotoNueva = $('ejFoto').files[0] ? $('ejFoto')._red : null;
+    if ($('ejFoto').files[0] && !fotoNueva) throw new Error('La foto nueva no se pudo procesar. Elígela de nuevo.');
+    if (fotoNueva) { rutaFoto = await subirAdmin('fotos', fotoNueva, 'jpg'); subidos.push(['fotos', rutaFoto]); }
+    const docNuevo = $('ejDocArchivo').files[0];
+    if (docNuevo) { const f = await reducirImagenDoc(docNuevo); rutaDoc = await subirAdmin('documentos', f, f.type === 'application/pdf' ? 'pdf' : f.type === 'image/png' ? 'png' : 'jpg'); subidos.push(['documentos', rutaDoc]); }
+    const { data, error } = await sb.rpc('admin_actualizar_jugador', {
+      p_planilla_id: r.planilla_id, p_nombre: d.nombre, p_apellido: d.apellido, p_tipo_documento: d.tipo, p_numero_documento: d.doc,
+      p_fecha_nacimiento: d.fecha, p_numero_camiseta: d.cam, p_documento_path: rutaDoc, p_foto_path: rutaFoto });
+    if (error) throw new Error(error.message || 'No se pudo guardar');
+    // se borran los archivos anteriores (si fallara, solo quedan sin usar; no afecta al jugador)
+    for (const [bucket, ruta] of [['fotos', data && data.foto_anterior], ['documentos', data && data.documento_anterior]]) {
+      if (ruta) { try { await sb.storage.from(bucket).remove([ruta]); delete urls[bucket + '/' + ruta]; } catch (x) { /* se ignora */ } }
+    }
+    $('dlgJug').close();
+    aviso('ok', `Guardado: ${d.apellido} ${d.nombre}.`);
+    await cargar();
+  } catch (err) {
+    for (const [bucket, ruta] of subidos) { try { await sb.storage.from(bucket).remove([ruta]); } catch (x) { /* se ignora */ } }
+    ejError(err.message || 'No se pudo guardar'); btn.disabled = false; btn.textContent = 'Guardar cambios';
+  }
 });
 
 // ---------- Arranque ----------
